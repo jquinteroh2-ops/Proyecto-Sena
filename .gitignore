@@ -1,0 +1,35 @@
+# ---- Backend (Java / Maven) ----
+backend/target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/
+!backend/.mvn/wrapper/
+hs_err_pid*
+replay_pid*
+
+# ---- Frontend (Node / Vite) ----
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Entorno / secretos ----
+.env
+.env.local
+*.env
+!.env.example
+
+# ---- IDE / OS ----
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ---- Docker / datos ----
+mysql-data/
+*.log

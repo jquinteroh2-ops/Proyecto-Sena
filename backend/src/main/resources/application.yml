@@ -1,0 +1,58 @@
+# ==========================================================================
+# EduckTrack - Configuracion base del backend
+# Perfil activo por defecto: dev. En contenedor se activa 'docker'.
+# ==========================================================================
+spring:
+  application:
+    name: educktrack-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway es la unica fuente de verdad del esquema. Nunca 'update' (RS-02).
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  mail:
+    # Configuracion de correo para notificaciones (RS-08). Valores reales por entorno.
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# --- Parametros de aplicacion propios de EduckTrack ---
+educktrack:
+  security:
+    jwt:
+      # DECISION DE DISENO: secreto por defecto solo para dev. En docker/prod
+      # se inyecta EDUCKTRACK_JWT_SECRET (Base64, >= 256 bits) via variable de entorno.
+      secret: ${EDUCKTRACK_JWT_SECRET:ZGV2LXNlY3JldC1lZHVja3RyYWNrLWNhbWJpYXItZW4tcHJvZHVjY2lvbi0xMjM0NTY3OA==}
+      # Expiracion del token (RNF-06: 8 horas de emision).
+      expiration-minutes: ${EDUCKTRACK_JWT_EXP_MIN:480}
+      issuer: educktrack
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+# --- Logging ---
+logging:
+  level:
+    com.educktrack: INFO
+    org.hibernate.SQL: WARN

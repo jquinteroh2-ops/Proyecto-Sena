@@ -1,0 +1,18 @@
+# ==========================================================================
+# Perfil DEV - backend ejecutado localmente contra MySQL en localhost.
+# Levanta MySQL con: docker compose up -d mysql
+# ==========================================================================
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:educktrack}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Bogota&characterEncoding=UTF-8
+    username: ${DB_USER:educktrack}
+    password: ${DB_PASSWORD:educktrack}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.educktrack: DEBUG
+    org.hibernate.SQL: DEBUG

@@ -1,0 +1,68 @@
+# ==========================================================================
+# EduckTrack - Orquestacion de contenedores (RS-10)
+# Servicios independientes: mysql, backend, frontend.
+# Uso:
+#   docker compose up -d mysql          -> solo BD (para desarrollo local del backend)
+#   docker compose up --build           -> stack completo
+# ==========================================================================
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: educktrack-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_NAME:-educktrack}
+      MYSQL_USER: ${DB_USER:-educktrack}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-educktrack}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - educktrack-net
+
+  backend:
+    build:
+      context: ./backend
+    container_name: educktrack-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-educktrack}
+      DB_USER: ${DB_USER:-educktrack}
+      DB_PASSWORD: ${DB_PASSWORD:-educktrack}
+      EDUCKTRACK_JWT_SECRET: ${EDUCKTRACK_JWT_SECRET:-ZGV2LXNlY3JldC1lZHVja3RyYWNrLWNhbWJpYXItZW4tcHJvZHVjY2lvbi0xMjM0NTY3OA==}
+    ports:
+      - "8080:8080"
+    networks:
+      - educktrack-net
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: educktrack-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - educktrack-net
+
+volumes:
+  mysql-data:
+
+networks:
+  educktrack-net:
+    driver: bridge
