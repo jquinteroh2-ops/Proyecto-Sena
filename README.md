@@ -118,7 +118,7 @@ curl http://localhost:8081/api/usuarios -H "Authorization: Bearer <TOKEN>"
 | 5 | Asistencia: registro, justificación, reportes y alertas (RF-26..RF-30, RB-04, RB-06) | ✅ |
 | 6 | Calificaciones: ponderación, notas, promedio, cierre de corte, novedad y boletín (RF-20, RF-31..RF-37, RB-03, RB-07, RB-15, RB-19) | ✅ |
 | 7 | Tareas: asignación, entrega, calificación y estado (RF-38..RF-42, RB-10, HU-23) | ✅ |
-| 8 | Reportes y notificaciones (RF-47..RF-56) | ⏳ |
+| 8 | Reportes (indicadores, rendimiento, export PDF/Excel) y notificaciones (RF-47..RF-56) | ✅ |
 | 9 | Configuración institucional y auditoría (RF-57..RF-59, RF-63, RS-07) | ⏳ |
 | 10 | Documentación de API (Swagger) | ⏳ |
 | 11 | Frontend por rol (HU-01..HU-30) | ⏳ |
