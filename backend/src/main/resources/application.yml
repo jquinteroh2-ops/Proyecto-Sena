@@ -30,7 +30,8 @@ spring:
     password: ${MAIL_PASSWORD:}
 
 server:
-  port: 8080
+  # Railway/Heroku inyectan el puerto via PORT; localmente cae a 8080.
+  port: ${PORT:8080}
   servlet:
     context-path: /
 
