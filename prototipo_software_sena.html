@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GA5-220501095-AA1-EV01 · Prototipo Software</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c1: #1A3C5E;   /* Azul oscuro - principal */
+    --c2: #2E86AB;   /* Azul medio - secundario */
+    --c3: #F5F0E8;   /* Crema - fondo */
+    --white: #FFFFFF;
+    --gray: #8A9BB0;
+    --error: #C0392B;
+    --success: #27AE60;
+    --border: #D0DCE8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--c3);
+    color: var(--c1);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--c1);
+    color: white;
+    padding: 18px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,.25);
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    letter-spacing: .5px;
+  }
+  header span {
+    font-size: .78rem;
+    opacity: .7;
+    background: rgba(255,255,255,.12);
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  /* ── PALETTE SECTION ── */
+  .palette-section {
+    padding: 30px 40px 10px;
+  }
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    color: var(--c1);
+    margin-bottom: 6px;
+  }
+  .section-sub {
+    font-size: .85rem;
+    color: var(--gray);
+    margin-bottom: 20px;
+  }
+  .palette {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 18px 10px 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.06);
+  }
+  .swatch-color {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  .swatch-info strong { display: block; font-size: .85rem; color: var(--c1); }
+  .swatch-info span   { font-size: .75rem; color: var(--gray); font-family: monospace; }
+
+  /* ── SCREENS GRID ── */
+  .screens-section {
+    padding: 30px 40px 40px;
+  }
+  .screens-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 28px;
+    margin-top: 20px;
+  }
+
+  /* ── SCREEN CARD ── */
+  .screen-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(26,60,94,.12);
+    border: 1px solid var(--border);
+  }
+  .screen-label {
+    background: var(--c1);
+    color: white;
+    font-size: .78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    padding: 10px 18px;
+  }
+  .screen-body {
+    padding: 28px 24px;
+    background: #F8FAFC;
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ── DIAGRAM HEADER BAR ── */
+  .diagram-bar {
+    width: 100%;
+    background: var(--c2);
+    border-radius: 8px 8px 0 0;
+    padding: 10px 14px;
+    color: white;
+    font-size: .82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .diagram-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.5); }
+
+  /* ── FORM AREA ── */
+  .form-area {
+    width: 100%;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 0 0 8px 8px;
+    padding: 20px 18px;
+  }
+  .form-logo {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .form-logo .logo-circle {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--c2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+  }
+  .form-logo p { font-size: .78rem; color: var(--gray); }
+  .form-logo strong { display: block; font-size: .92rem; color: var(--c1); }
+
+  .field-row { margin-bottom: 12px; }
+  .field-label {
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--c1);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+  }
+  .field-box {
+    width: 100%;
+    background: var(--c3);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: .8rem;
+    color: var(--gray);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .field-box.active { border-color: var(--c2); background: #EEF6FB; color: var(--c1); }
+  .field-icon { font-size: .9rem; opacity: .6; }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--c2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 4px;
+    letter-spacing: .5px;
+  }
+  .btn-link {
+    text-align: center;
+    font-size: .72rem;
+    color: var(--c2);
+    margin-top: 10px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* ── ERROR SCREEN ── */
+  .error-header {
+    width: 100%;
+    background: #FDEDEC;
+    border: 1.5px solid #F1948A;
+    border-radius: 8px 8px 0 0;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .error-icon {
+    width: 32px; height: 32px;
+    background: var(--error);
+    border-radius: 50%;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; font-weight: 700; flex-shrink: 0;
+  }
+  .error-header strong { font-size: .85rem; color: var(--error); }
+  .error-header span   { font-size: .75rem; color: #888; display: block; }
+
+  .error-list {
+    width: 100%;
+    background: white;
+    border: 1.5px solid #F1948A;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 14px 18px;
+  }
+  .error-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px dashed #F5C6CB;
+    font-size: .78rem;
+    color: #555;
+  }
+  .error-item:last-child { border-bottom: none; }
+  .error-badge {
+    background: var(--error);
+    color: white;
+    font-size: .62rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .error-badge.warn {
+    background: #E67E22;
+  }
+  .btn-retry {
+    width: 100%;
+    background: white;
+    color: var(--error);
+    border: 1.5px solid var(--error);
+    border-radius: 6px;
+    padding: 9px;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 14px;
+  }
+
+  /* ── DIAGRAM ANNOTATION ── */
+  .annot {
+    font-size: .7rem;
+    color: var(--gray);
+    margin-top: 10px;
+    text-align: center;
+    font-style: italic;
+  }
+
+  /* ── ELEMENTS LIST ── */
+  .elements-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: .8rem;
+  }
+  .elements-table th {
+    background: var(--c1);
+    color: white;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 500;
+  }
+  .elements-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    color: #444;
+  }
+  .elements-table tr:nth-child(even) td { background: #F0F5FA; }
+
+  /* ── INVESTIGATION SECTION ── */
+  .inv-section {
+    padding: 10px 40px 50px;
+  }
+  .inv-card {
+    background: white;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 22px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  }
+  .inv-card-header {
+    background: var(--c1);
+    color: white;
+    padding: 13px 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .inv-card-header .num {
+    background: var(--c2);
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .inv-card-header h3 { font-size: .95rem; font-weight: 600; }
+  .inv-card-body { padding: 20px 22px; }
+  .inv-card-body p { font-size: .85rem; color: #444; line-height: 1.65; margin-bottom: 10px; }
+  .inv-card-body p:last-child { margin-bottom: 0; }
+  .ref-tag {
+    display: inline-block;
+    background: #EEF6FB;
+    color: var(--c2);
+    font-size: .68rem;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 10px;
+    border: 1px solid #BEE0F0;
+    margin-right: 4px;
+  }
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .tech-pill {
+    background: var(--c3);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: .78rem;
+    color: var(--c1);
+    font-weight: 500;
+  }
+  .tech-pill span { display: block; font-size: .68rem; color: var(--gray); font-weight: 400; margin-top: 2px; }
+
+  .sources {
+    background: #F0F5FA;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-top: 12px;
+  }
+  .sources p { font-size: .75rem; color: #555; margin-bottom: 4px !important; }
+  .sources strong { color: var(--c1); }
+
+  /* divider */
+  .divider {
+    height: 3px;
+    background: linear-gradient(90deg, var(--c1), var(--c2), transparent);
+    margin: 0 40px 30px;
+    border-radius: 2px;
+  }
+
+  @media(max-width:600px){
+    header, .palette-section, .screens-section, .inv-section { padding-left: 16px; padding-right: 16px; }
+    .divider { margin-left: 16px; margin-right: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Evidencia GA5-220501095-AA1-EV01 · Taller Prototipo del Software</h1>
+  <span>SENA · Formación Tecnológica</span>
+</header>
+
+<!-- ═══════════════════════════════════════════════
+     SECCIÓN 1 – PALETA DE COLORES
+════════════════════════════════════════════════ -->
+<div class="palette-section">
+  <div class="section-title">Sección 1 — Paleta de Colores</div>
+  <div class="section-sub">Combinación de tres colores seleccionados para las pantallas del sistema</div>
+  <div class="palette">
+    <div class="swatch">
+      <div class="swatch-color" style="background:#1A3C5E;"></div>
+      <div class="swatch-info">
+        <strong>Azul Oscuro · Principal</strong>
+        <span>#1A3C5E</span>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#2E86AB;"></div>
+      <div class="swatch-info">
+        <strong>Azul Medio · Secundario</strong>
+        <span>#2E86AB</span>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#F5F0E8;"></div>
+      <div class="swatch-info">
+        <strong>Crema · Fondo</strong>
+        <span>#F5F0E8</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════
+     SECCIÓN 1 – PANTALLAS / DIAGRAMAS
+════════════════════════════════════════════════ -->
+<div class="screens-section">
+  <div class="section-title">Diagrama de Funcionalidades — Pantallas del Sistema</div>
+  <div class="section-sub">Elementos de entrada, componentes y organización lógica de cada pantalla</div>
+
+  <div class="screens-grid">
+
+    <!-- ── PANTALLA 1: LOGIN ── -->
+    <div class="screen-card">
+      <div class="screen-label">Pantalla 1 · Autenticación de Usuario (Login)</div>
+      <div class="screen-body">
+        <div class="diagram-bar">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          Sistema de Gestión · Login
+        </div>
+        <div class="form-area">
+          <div class="form-logo">
+            <div class="logo-circle">🔐</div>
+            <strong>Iniciar Sesión</strong>
+            <p>Valide su identidad para continuar</p>
+          </div>
+          <div class="field-row">
+            <div class="field-label">Correo electrónico</div>
+            <div class="field-box active"><span class="field-icon">✉</span>usuario@correo.com</div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">Contraseña</div>
+            <div class="field-box"><span class="field-icon">🔒</span>••••••••</div>
+          </div>
+          <button class="btn-primary">Ingresar al Sistema</button>
+          <div class="btn-link">¿Olvidó su contraseña?</div>
+        </div>
+        <p class="annot">Entradas: correo · contraseña &nbsp;|&nbsp; Salidas: sesión válida / error</p>
+      </div>
+      <!-- Tabla de componentes -->
+      <div style="padding:0 14px 16px">
+        <table class="elements-table">
+          <tr><th>Componente</th><th>Tipo</th><th>Color</th></tr>
+          <tr><td>Campo correo</td><td>Input text</td><td>Crema / Azul medio</td></tr>
+          <tr><td>Campo contraseña</td><td>Input password</td><td>Crema / Azul medio</td></tr>
+          <tr><td>Botón Ingresar</td><td>Button primary</td><td>Azul medio</td></tr>
+          <tr><td>Enlace recuperar</td><td>Link</td><td>Azul medio</td></tr>
+          <tr><td>Encabezado</td><td>Logo + título</td><td>Azul oscuro</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── PANTALLA 2: REGISTRO ── -->
+    <div class="screen-card">
+      <div class="screen-label">Pantalla 2 · Registro de Usuario</div>
+      <div class="screen-body">
+        <div class="diagram-bar">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          Sistema de Gestión · Registro
+        </div>
+        <div class="form-area">
+          <div class="form-logo">
+            <div class="logo-circle">👤</div>
+            <strong>Registro de Usuario</strong>
+            <p>Complete todos los campos obligatorios</p>
+          </div>
+          <div class="field-row">
+            <div class="field-label">Nombres</div>
+            <div class="field-box active"><span class="field-icon">✏</span>Ingrese sus nombres</div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">Apellidos</div>
+            <div class="field-box"><span class="field-icon">✏</span>Ingrese sus apellidos</div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">Cédula de ciudadanía</div>
+            <div class="field-box"><span class="field-icon">🪪</span>N.º de documento</div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">Fecha de nacimiento</div>
+            <div class="field-box"><span class="field-icon">📅</span>DD / MM / AAAA</div>
+          </div>
+          <button class="btn-primary">Registrar Usuario</button>
+        </div>
+        <p class="annot">Entradas: nombres · apellidos · cédula · fecha nac.</p>
+      </div>
+      <div style="padding:0 14px 16px">
+        <table class="elements-table">
+          <tr><th>Componente</th><th>Tipo</th><th>Color</th></tr>
+          <tr><td>Campo nombres</td><td>Input text</td><td>Crema / Azul medio</td></tr>
+          <tr><td>Campo apellidos</td><td>Input text</td><td>Crema / Azul medio</td></tr>
+          <tr><td>Campo cédula</td><td>Input number</td><td>Crema / Azul medio</td></tr>
+          <tr><td>Selector fecha</td><td>Date picker</td><td>Crema / Azul medio</td></tr>
+          <tr><td>Botón Registrar</td><td>Button primary</td><td>Azul medio</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── PANTALLA 3: ERRORES ── -->
+    <div class="screen-card">
+      <div class="screen-label">Pantalla 3 · Notificación de Errores al Usuario</div>
+      <div class="screen-body">
+        <div class="error-header">
+          <div class="error-icon">!</div>
+          <div>
+            <strong>Se han encontrado errores en el formulario</strong>
+            <span>Corrija los campos indicados para continuar</span>
+          </div>
+        </div>
+        <div class="error-list">
+          <div class="error-item">
+            <span class="error-badge">ERROR</span>
+            El campo <strong>Cédula</strong> solo acepta valores numéricos.
+          </div>
+          <div class="error-item">
+            <span class="error-badge">ERROR</span>
+            La <strong>fecha de nacimiento</strong> ingresada no es válida.
+          </div>
+          <div class="error-item">
+            <span class="error-badge warn">AVISO</span>
+            El campo <strong>Correo</strong> no tiene el formato correcto.
+          </div>
+          <div class="error-item">
+            <span class="error-badge warn">AVISO</span>
+            La <strong>contraseña</strong> debe tener mínimo 8 caracteres.
+          </div>
+          <button class="btn-retry">↩ Volver y corregir</button>
+        </div>
+        <p class="annot">Entradas: mensajes del sistema &nbsp;|&nbsp; Salidas: descripción del error · acción</p>
+      </div>
+      <div style="padding:0 14px 16px">
+        <table class="elements-table">
+          <tr><th>Componente</th><th>Tipo</th><th>Color</th></tr>
+          <tr><td>Cabecera error</td><td>Alert header</td><td>Rojo claro / Rojo</td></tr>
+          <tr><td>Ítem de error</td><td>Error message</td><td>Rojo oscuro (badge)</td></tr>
+          <tr><td>Ítem de aviso</td><td>Warning message</td><td>Naranja (badge)</td></tr>
+          <tr><td>Botón volver</td><td>Button outline</td><td>Rojo outline</td></tr>
+          <tr><td>Fondo panel</td><td>Container</td><td>Blanco</td></tr>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════
+     SECCIÓN 2 – INVESTIGACIÓN CALIDAD DE SOFTWARE
+════════════════════════════════════════════════ -->
+<div class="inv-section">
+  <div class="section-title">Sección 2 — Investigación: Calidad de Software</div>
+  <div class="section-sub" style="margin-bottom:24px">Fundamentos de calidad basados en fuentes bibliográficas reconocidas</div>
+
+  <!-- 1 -->
+  <div class="inv-card">
+    <div class="inv-card-header">
+      <div class="num">1</div>
+      <h3>Definición de Calidad de Software</h3>
+    </div>
+    <div class="inv-card-body">
+      <p>La calidad del software es el grado en que un sistema, componente o proceso cumple los <strong>requisitos especificados</strong> y las <strong>necesidades o expectativas del cliente o usuario</strong>. Esta definición proviene del estándar IEEE 610.12 y es ampliamente adoptada en la industria.</p>
+      <p>Según la norma <strong>ISO/IEC 25010</strong> (SQuaRE), la calidad del software se evalúa a través de características como: funcionalidad, fiabilidad, usabilidad, eficiencia, mantenibilidad y portabilidad. Un software de calidad no solo ejecuta correctamente sus funciones, sino que lo hace de manera eficiente, segura y satisfactoria para el usuario.</p>
+      <p>Roger Pressman en su libro <em>Ingeniería del Software</em> añade que la calidad es una gestión continua que involucra procesos, personas y productos.</p>
+      <div class="sources">
+        <p><strong>Fuentes:</strong></p>
+        <p>📚 IEEE Std 610.12-1990 · <em>IEEE Standard Glossary of Software Engineering Terminology</em></p>
+        <p>📚 ISO/IEC 25010:2011 · <em>Systems and software quality requirements and evaluation (SQuaRE)</em></p>
+        <p>📚 Pressman, R. (2010). <em>Ingeniería del Software: Un Enfoque Práctico</em> (7.ª ed.). McGraw-Hill.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="inv-card">
+    <div class="inv-card-header">
+      <div class="num">2</div>
+      <h3>Concepto de Usabilidad en Software</h3>
+    </div>
+    <div class="inv-card-body">
+      <p>La <strong>usabilidad</strong> es la capacidad de un producto de software para ser entendido, aprendido, usado y resultarle atractivo al usuario cuando se utiliza en determinadas condiciones. Es una de las subcaracterísticas de calidad definidas en <strong>ISO/IEC 25010</strong>.</p>
+      <p>Jakob Nielsen, pionero en usabilidad, la descompone en cinco componentes: <strong>1) Facilidad de aprendizaje</strong> (¿qué tan fácil es para los usuarios realizar tareas básicas la primera vez?), <strong>2) Eficiencia</strong> (una vez aprendido, ¿con qué rapidez realizan las tareas?), <strong>3) Memorización</strong>, <strong>4) Errores</strong> (cuántos cometen y qué tan graves son), y <strong>5) Satisfacción</strong> (¿les agrada el diseño?).</p>
+      <p>En el contexto de las pantallas desarrolladas en la Sección 1, la usabilidad se aplica mediante: etiquetas claras, mensajes de error descriptivos, flujo lógico de campos, y una paleta de colores coherente que facilita la navegación.</p>
+      <div class="sources">
+        <p><strong>Fuentes:</strong></p>
+        <p>📚 Nielsen, J. (1993). <em>Usability Engineering</em>. Academic Press.</p>
+        <p>📚 ISO/IEC 25010:2011 · Característica de Usabilidad</p>
+        <p>📚 Hassan Montero, Y. y Martín Fernández, F.J. (2003). <em>Qué es la Usabilidad</em>. No Solo Usabilidad Journal.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="inv-card">
+    <div class="inv-card-header">
+      <div class="num">3</div>
+      <h3>Estándares de Calidad de Software</h3>
+    </div>
+    <div class="inv-card-body">
+      <p>Los estándares internacionales de calidad de software establecen marcos de referencia para evaluar, certificar y mejorar los procesos de desarrollo. Los principales son:</p>
+      <p><strong>ISO/IEC 25010 (SQuaRE):</strong> Define el modelo de calidad del producto de software con 8 características principales: adecuación funcional, eficiencia de desempeño, compatibilidad, usabilidad, fiabilidad, seguridad, mantenibilidad y portabilidad.</p>
+      <p><strong>ISO/IEC 12207:</strong> Establece los procesos del ciclo de vida del software, incluyendo desarrollo, mantenimiento y operación con criterios de calidad en cada etapa.</p>
+      <p><strong>CMMI (Capability Maturity Model Integration):</strong> Modelo de madurez que evalúa los procesos de desarrollo de software en 5 niveles, desde inicial (1) hasta optimizado (5), guiando a las organizaciones hacia la mejora continua.</p>
+      <div class="sources">
+        <p><strong>Fuentes:</strong></p>
+        <p>📚 ISO/IEC 25010:2011 · <em>SQuaRE – System and Software Quality Models</em></p>
+        <p>📚 ISO/IEC 12207:2017 · <em>Software and systems engineering — Software life cycle processes</em></p>
+        <p>📚 CMMI Institute (2018). <em>CMMI for Development v2.0</em>. Software Engineering Institute – Carnegie Mellon.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="inv-card">
+    <div class="inv-card-header">
+      <div class="num">4</div>
+      <h3>Tecnologías para Implementar Calidad en Software</h3>
+    </div>
+    <div class="inv-card-body">
+      <p>Existen diversas herramientas y tecnologías que permiten implementar y garantizar la calidad durante el ciclo de desarrollo del software:</p>
+      <div class="tech-grid">
+        <div class="tech-pill">SonarQube<span>Análisis estático de código y detección de errores</span></div>
+        <div class="tech-pill">Selenium<span>Pruebas automatizadas de interfaces de usuario (UI)</span></div>
+        <div class="tech-pill">JUnit / TestNG<span>Frameworks de pruebas unitarias en Java</span></div>
+        <div class="tech-pill">Jenkins<span>Integración continua (CI/CD) y automatización</span></div>
+        <div class="tech-pill">JIRA<span>Gestión de bugs, tareas e incidencias</span></div>
+        <div class="tech-pill">Postman<span>Pruebas de APIs REST y validación de servicios</span></div>
+        <div class="tech-pill">Figma<span>Prototipado y validación de usabilidad (UX)</span></div>
+        <div class="tech-pill">Docker<span>Entornos reproducibles y pruebas aisladas</span></div>
+      </div>
+      <p style="margin-top:12px">Estas herramientas se integran en metodologías ágiles como <strong>Scrum</strong> y <strong>XP (Extreme Programming)</strong>, que incluyen prácticas de calidad como revisiones de código, pruebas de regresión y refactorización continua.</p>
+      <div class="sources">
+        <p><strong>Fuentes:</strong></p>
+        <p>📚 Sommerville, I. (2011). <em>Ingeniería del Software</em> (9.ª ed.). Pearson Educación.</p>
+        <p>📚 Myers, G., Sandler, C. & Badgett, T. (2011). <em>The Art of Software Testing</em> (3.ª ed.). Wiley.</p>
+        <p>📚 SonarSource (2023). <em>SonarQube Documentation</em>. docs.sonarsource.com</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- footer -->
+<div style="background:var(--c1);color:rgba(255,255,255,.6);text-align:center;padding:14px;font-size:.75rem;">
+  GA5-220501095-AA1-EV01 &nbsp;·&nbsp; Taller sobre construcción del prototipo del software &nbsp;·&nbsp; SENA · GFPI-F-135 V02
+</div>
+
+</body>
+</html>
