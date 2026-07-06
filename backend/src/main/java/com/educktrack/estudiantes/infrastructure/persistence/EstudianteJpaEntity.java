@@ -56,4 +56,14 @@ public class EstudianteJpaEntity {
 
     @Column(name = "acudiente_parentesco", length = 40)
     private String acudienteParentesco;
+
+    // Datos del retiro (RB-20 / RF-10): motivo, fecha y autorizacion.
+    @Column(name = "motivo_retiro", length = 300)
+    private String motivoRetiro;
+
+    @Column(name = "fecha_retiro")
+    private java.time.LocalDate fechaRetiro;
+
+    @Column(name = "autorizado_retiro", length = 120)
+    private String autorizadoRetiro;
 }
