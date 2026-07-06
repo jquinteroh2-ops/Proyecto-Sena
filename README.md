@@ -115,7 +115,7 @@ curl http://localhost:8081/api/usuarios -H "Authorization: Bearer <TOKEN>"
 | 2 | Seguridad: registro/login, JWT, BCrypt, RBAC (RF-01, RF-03, RF-60..RF-64) | ✅ |
 | 3 | Módulo académico: estudiantes, docentes, materias, cursos, plan, asignación, matrícula (RF-06..RF-19, RF-43..RF-46, RF-57; RB-01, RB-02, RB-11, RB-16, RB-17, RB-20) | ✅ |
 | 4 | Horarios: bloques y validación de cruces (RF-21..RF-25, RB-18, HU-11) | ✅ |
-| 5 | Asistencia (RF-26..RF-30, RB-04, RB-06) | ⏳ |
+| 5 | Asistencia: registro, justificación, reportes y alertas (RF-26..RF-30, RB-04, RB-06) | ✅ |
 | 6 | Calificaciones y boletín (RF-31..RF-37, RB-03, RB-07, RB-15, RB-19) | ⏳ |
 | 7 | Tareas (RF-38..RF-42, RB-10) | ⏳ |
 | 8 | Reportes y notificaciones (RF-47..RF-56) | ⏳ |
