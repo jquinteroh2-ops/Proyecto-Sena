@@ -83,6 +83,25 @@ docker compose up --build
 
 - Aplicación: http://localhost (Nginx sirve el frontend y proxya `/api` al backend)
 
+### Autenticación (Fase 2)
+
+Al primer arranque se crea un **Administrador inicial** (idempotente). Credenciales por defecto (configurables por `EDUCKTRACK_ADMIN_CORREO` / `EDUCKTRACK_ADMIN_PASSWORD`):
+
+- Correo: `admin@educktrack.edu.co`
+- Contraseña: `Admin123*`
+
+```bash
+# Login (RF-60) -> devuelve un JWT
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"correo":"admin@educktrack.edu.co","password":"Admin123*"}'
+
+# Usar el token en endpoints protegidos (RBAC, RS-03)
+curl http://localhost:8080/api/usuarios -H "Authorization: Bearer <TOKEN>"
+```
+
+> Rutas públicas: `/api/auth/login`, `/api/auth/recuperar-password`, `/api/health`, Swagger. Todo lo demás exige JWT válido; las acciones sobre usuarios exigen rol `ADMINISTRADOR`.
+
 ---
 
 ## Estado del proyecto — construcción por fases
@@ -90,8 +109,8 @@ docker compose up --build
 | Fase | Contenido | Estado |
 | --- | --- | --- |
 | 0 | Setup: estructura, docker-compose, perfiles, README | ✅ |
-| 1 | Dominio y persistencia base (Usuario, Rol, Estudiante, Docente, Curso, Materia, PeriodoAcademico) | ⏳ |
-| 2 | Seguridad: registro/login, JWT, BCrypt, RBAC (RF-60..RF-64) | ⏳ |
+| 1 | Dominio y persistencia base (Usuario, Rol, Estudiante, Docente, Curso, Materia, PeriodoAcademico) | ✅ |
+| 2 | Seguridad: registro/login, JWT, BCrypt, RBAC (RF-01, RF-03, RF-60..RF-64) | ✅ |
 | 3 | Módulo académico (RF-06..RF-20, RB-01, RB-11, RB-17) | ⏳ |
 | 4 | Horarios y cruces (RF-21..RF-25, RB-18) | ⏳ |
 | 5 | Asistencia (RF-26..RF-30, RB-04, RB-06) | ⏳ |
