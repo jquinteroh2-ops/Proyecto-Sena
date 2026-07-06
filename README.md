@@ -70,9 +70,11 @@ npm install
 npm run dev
 ```
 
-- Backend: http://localhost:8080 — salud en `/api/health`
-- Swagger UI: http://localhost:8080/swagger-ui.html (RS-09)
+- Backend (perfil dev): http://localhost:8081 — salud en `/api/health`
+- Swagger UI: http://localhost:8081/swagger-ui.html (RS-09)
 - Frontend: http://localhost:5173
+
+> El perfil `dev` usa el puerto **8081** (el 8080 suele estar ocupado en Windows por otras apps, p. ej. NVIDIA Broadcast). En Docker el backend expone 8080.
 
 ### Opción B — stack completo con Docker
 
@@ -92,12 +94,12 @@ Al primer arranque se crea un **Administrador inicial** (idempotente). Credencia
 
 ```bash
 # Login (RF-60) -> devuelve un JWT
-curl -X POST http://localhost:8080/api/auth/login \
+curl -X POST http://localhost:8081/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"correo":"admin@educktrack.edu.co","password":"Admin123*"}'
 
 # Usar el token en endpoints protegidos (RBAC, RS-03)
-curl http://localhost:8080/api/usuarios -H "Authorization: Bearer <TOKEN>"
+curl http://localhost:8081/api/usuarios -H "Authorization: Bearer <TOKEN>"
 ```
 
 > Rutas públicas: `/api/auth/login`, `/api/auth/recuperar-password`, `/api/health`, Swagger. Todo lo demás exige JWT válido; las acciones sobre usuarios exigen rol `ADMINISTRADOR`.
@@ -112,7 +114,7 @@ curl http://localhost:8080/api/usuarios -H "Authorization: Bearer <TOKEN>"
 | 1 | Dominio y persistencia base (Usuario, Rol, Estudiante, Docente, Curso, Materia, PeriodoAcademico) | ✅ |
 | 2 | Seguridad: registro/login, JWT, BCrypt, RBAC (RF-01, RF-03, RF-60..RF-64) | ✅ |
 | 3 | Módulo académico: estudiantes, docentes, materias, cursos, plan, asignación, matrícula (RF-06..RF-19, RF-43..RF-46, RF-57; RB-01, RB-02, RB-11, RB-16, RB-17, RB-20) | ✅ |
-| 4 | Horarios y cruces (RF-21..RF-25, RB-18) | ⏳ |
+| 4 | Horarios: bloques y validación de cruces (RF-21..RF-25, RB-18, HU-11) | ✅ |
 | 5 | Asistencia (RF-26..RF-30, RB-04, RB-06) | ⏳ |
 | 6 | Calificaciones y boletín (RF-31..RF-37, RB-03, RB-07, RB-15, RB-19) | ⏳ |
 | 7 | Tareas (RF-38..RF-42, RB-10) | ⏳ |

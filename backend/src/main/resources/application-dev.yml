@@ -2,6 +2,11 @@
 # Perfil DEV - backend ejecutado localmente contra MySQL en localhost.
 # Levanta MySQL con: docker compose up -d mysql
 # ==========================================================================
+server:
+  # DECISION DE DISENO: en local el puerto 8080 suele estar ocupado por otras
+  # apps (p. ej. NVIDIA Broadcast). En dev usamos 8081; en docker/prod es 8080.
+  port: ${PORT:8081}
+
 spring:
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:educktrack}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Bogota&characterEncoding=UTF-8
