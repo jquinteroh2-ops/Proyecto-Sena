@@ -44,7 +44,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-educktrack}
       EDUCKTRACK_JWT_SECRET: ${EDUCKTRACK_JWT_SECRET:-ZGV2LXNlY3JldC1lZHVja3RyYWNrLWNhbWJpYXItZW4tcHJvZHVjY2lvbi0xMjM0NTY3OA==}
     ports:
-      - "8080:8080"
+      - "8090:8080"
     networks:
       - educktrack-net
 
