@@ -32,6 +32,15 @@ public class EstudianteJpaEntity {
     @Column(name = "documento", length = 30, nullable = false, unique = true)
     private String documento;
 
+    /**
+     * Cuenta de usuario asociada al estudiante (V9, RS-03 / RNF-07). Es opcional:
+     * el estudiante se registra y matricula antes de tener acceso al sistema.
+     * Permite resolver "usuario autenticado -> estudiante propio" y aplicar
+     * ownership sobre sus datos.
+     */
+    @Column(name = "usuario_id", unique = true)
+    private Long usuarioId;
+
     @Column(name = "nombres", length = 100, nullable = false)
     private String nombres;
 
