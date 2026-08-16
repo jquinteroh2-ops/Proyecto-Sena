@@ -1,6 +1,7 @@
 package com.educktrack.estudiantes.application;
 
 import com.educktrack.estudiantes.domain.Estudiante;
+import com.educktrack.estudiantes.domain.evento.EventosDeEstudiantes.EstudianteRetirado;
 import com.educktrack.estudiantes.infrastructure.persistence.EstudianteJpaEntity;
 import com.educktrack.estudiantes.infrastructure.persistence.EstudianteMapper;
 import com.educktrack.estudiantes.infrastructure.persistence.EstudianteRepository;
@@ -12,6 +13,7 @@ import com.educktrack.auditoria.application.AuditoriaService;
 import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.shared.domain.ReglaNegocioException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,12 +29,14 @@ public class GestionEstudianteService {
     private final EstudianteRepository estudianteRepository;
     private final ContextoUsuario contexto;
     private final AuditoriaService auditoria;
+    private final ApplicationEventPublisher eventos;
 
     public GestionEstudianteService(EstudianteRepository estudianteRepository, ContextoUsuario contexto,
-                                    AuditoriaService auditoria) {
+                                    AuditoriaService auditoria, ApplicationEventPublisher eventos) {
         this.estudianteRepository = estudianteRepository;
         this.contexto = contexto;
         this.auditoria = auditoria;
+        this.eventos = eventos;
     }
 
     /** RF-06 / HU-05: registra un estudiante en estado ACTIVO. */
@@ -106,6 +110,10 @@ public class GestionEstudianteService {
         auditoria.registrar(TipoOperacion.ESTUDIANTE_RETIRADO, "estudiante", id,
                 "Retiro de " + e.getNombres() + " " + e.getApellidos() + " (documento " + e.getDocumento()
                         + "). Motivo: " + req.motivo() + ". Autorizado por: " + req.autorizadoPor() + ".");
+
+        // HU-07: "se notifica el retiro al padre de familia vinculado".
+        eventos.publishEvent(new EstudianteRetirado(
+                id, e.getNombres() + " " + e.getApellidos(), req.motivo()));
         return dto;
     }
 

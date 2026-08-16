@@ -27,4 +27,15 @@ public interface AsignacionDocenteRepository extends JpaRepository<AsignacionDoc
 
     /** RNF-07: la materia acota ademas el alcance en las consultas por materia. */
     boolean existsByDocenteIdAndCursoIdAndMateriaId(Long docenteId, Long cursoId, Long materiaId);
+
+    /**
+     * RF-55 / RS-08: docentes con carga academica en un curso. Son los
+     * destinatarios de lo que afecta al curso, como el cierre de un corte.
+     */
+    @Query("select distinct a.docenteId from AsignacionDocenteJpaEntity a where a.cursoId = :cursoId")
+    List<Long> findDocenteIdsByCursoId(Long cursoId);
+
+    /** RF-55: docentes con carga academica en un periodo, para los avisos de plazo. */
+    @Query("select distinct a.docenteId from AsignacionDocenteJpaEntity a where a.periodoAcademicoId = :periodoAcademicoId")
+    List<Long> findDocenteIdsByPeriodoAcademicoId(Long periodoAcademicoId);
 }

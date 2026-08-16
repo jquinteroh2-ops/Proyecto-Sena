@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -78,8 +79,15 @@ public class NotificacionService {
     /**
      * Genera una notificacion (interna + correo segun canal). Punto de entrada
      * para las alertas automaticas del sistema (RB-13, RF-30, RF-42, RF-55, RF-56).
+     *
+     * <p><strong>REQUIRES_NEW no es decorativo.</strong> Las alertas se disparan
+     * desde listeners {@code AFTER_COMMIT}, donde la transaccion de negocio ya
+     * confirmo: participar de ella significaria que el registro nunca llega a
+     * persistirse. Ademas hace que cada aviso sea independiente, de modo que un
+     * destinatario problematico no se lleve por delante los avisos de los
+     * demas.</p>
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public NotificacionDto notificar(Long usuarioId, String titulo, String mensaje, TipoNotificacion tipo) {
         NotificacionJpaEntity n = new NotificacionJpaEntity();
         n.setDestinatarioUsuarioId(usuarioId);

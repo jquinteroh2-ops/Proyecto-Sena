@@ -48,6 +48,14 @@ server:
 
 # --- Parametros de aplicacion propios de EduckTrack ---
 educktrack:
+  alertas:
+    # RF-42 / RF-55: alertas que dependen del calendario. Se revisan una vez al
+    # dia a primera hora, antes de la jornada escolar (RNF-11: 6:00 a 18:00).
+    cron: ${EDUCKTRACK_ALERTAS_CRON:0 0 7 * * *}
+    # Dias de antelacion con que se avisa de una tarea proxima a vencer (RF-42)
+    # y del fin del periodo academico (RF-55).
+    dias-aviso-tarea: ${EDUCKTRACK_DIAS_AVISO_TAREA:3}
+    dias-aviso-cierre: ${EDUCKTRACK_DIAS_AVISO_CIERRE:7}
   security:
     jwt:
       # DECISION DE DISENO: secreto por defecto solo para dev. En docker/prod
