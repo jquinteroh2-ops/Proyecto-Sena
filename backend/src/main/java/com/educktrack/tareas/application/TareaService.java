@@ -1,5 +1,6 @@
 package com.educktrack.tareas.application;
 
+import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import com.educktrack.tareas.domain.EstadoEntrega;
 import com.educktrack.tareas.domain.Tarea;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Casos de uso de tareas (RF-38..RF-42). Aplica HU-23 (fecha limite no pasada)
@@ -29,15 +31,27 @@ public class TareaService {
 
     private final TareaRepository tareaRepository;
     private final EntregaTareaRepository entregaRepository;
+    private final ContextoUsuario contexto;
 
-    public TareaService(TareaRepository tareaRepository, EntregaTareaRepository entregaRepository) {
+    public TareaService(TareaRepository tareaRepository, EntregaTareaRepository entregaRepository,
+                        ContextoUsuario contexto) {
         this.tareaRepository = tareaRepository;
         this.entregaRepository = entregaRepository;
+        this.contexto = contexto;
     }
 
-    /** RF-38 / HU-23: asigna una tarea con fecha limite valida. */
+    /**
+     * RF-38 / HU-23: asigna una tarea con fecha limite valida.
+     *
+     * <p>RNF-07: el docente solo asigna tareas de las materias que dicta y la
+     * tarea queda registrada a su nombre. El {@code docenteId} del cuerpo se
+     * ignora cuando quien llama es un docente, de modo que no puede asignar
+     * tareas en nombre de un companero; Coordinacion si puede indicarlo.</p>
+     */
     @Transactional
     public TareaDto asignar(AsignarTareaRequest req) {
+        contexto.exigirGestionMateria(req.cursoId(), req.materiaId());
+        Long docenteId = contexto.docenteIdActual().orElseGet(req::docenteId);
         // Construir el dominio valida HU-23 (fecha limite >= hoy).
         new Tarea(req.fechaLimite(), req.permiteEntregaTardia(), LocalDate.now());
         TareaJpaEntity e = new TareaJpaEntity();
@@ -46,23 +60,32 @@ public class TareaService {
         e.setMateriaId(req.materiaId());
         e.setCursoId(req.cursoId());
         e.setPeriodoAcademicoId(req.periodoAcademicoId());
-        e.setDocenteId(req.docenteId());
+        e.setDocenteId(docenteId);
         e.setFechaLimite(req.fechaLimite());
         e.setPermiteEntregaTardia(req.permiteEntregaTardia());
         e.setFechaCreacion(LocalDateTime.now());
         return toTareaDto(tareaRepository.save(e));
     }
 
+    /** RNF-07: las tareas de un curso solo las ve quien alcanza ese curso. */
     @Transactional(readOnly = true)
     public List<TareaDto> listarPorCurso(Long cursoId) {
+        contexto.exigirAccesoCurso(cursoId);
         return tareaRepository.findByCursoId(cursoId).stream().map(TareaService::toTareaDto).toList();
     }
 
-    /** RF-39 / RB-10: registra la entrega de un estudiante dentro de plazo. */
+    /**
+     * RF-39 / RB-10: registra la entrega de un estudiante dentro de plazo.
+     *
+     * <p>RNF-07: cuando quien entrega es un estudiante se usa su propio
+     * identificador y se descarta el del cuerpo, para que nadie pueda entregar
+     * en nombre de otro.</p>
+     */
     @Transactional
     public EntregaDto entregar(Long tareaId, EntregarTareaRequest req) {
         TareaJpaEntity tareaEntity = obtenerTarea(tareaId);
-        if (entregaRepository.existsByTareaIdAndEstudianteId(tareaId, req.estudianteId())) {
+        Long estudianteId = contexto.resolverEstudianteId(req.estudianteId());
+        if (entregaRepository.existsByTareaIdAndEstudianteId(tareaId, estudianteId)) {
             throw new ReglaNegocioException("RF-39", "El estudiante ya realizo la entrega de esta tarea.");
         }
         Tarea tarea = new Tarea(tareaEntity.getFechaLimite(), tareaEntity.isPermiteEntregaTardia(),
@@ -71,17 +94,19 @@ public class TareaService {
 
         EntregaTareaJpaEntity entrega = new EntregaTareaJpaEntity();
         entrega.setTareaId(tareaId);
-        entrega.setEstudianteId(req.estudianteId());
+        entrega.setEstudianteId(estudianteId);
         entrega.setEvidencia(req.evidencia());
         entrega.setFechaEntrega(LocalDateTime.now());
         return toEntregaDto(entregaRepository.save(entrega));
     }
 
-    /** RF-40: califica una entrega con retroalimentacion. */
+    /** RF-40 / RNF-07: califica una entrega de una materia que el docente dicta. */
     @Transactional
     public EntregaDto calificar(Long entregaId, CalificarTareaRequest req) {
         EntregaTareaJpaEntity entrega = entregaRepository.findById(entregaId)
                 .orElseThrow(() -> new ReglaNegocioException("RF-40", "La entrega no existe."));
+        TareaJpaEntity tarea = obtenerTarea(entrega.getTareaId());
+        contexto.exigirGestionMateria(tarea.getCursoId(), tarea.getMateriaId());
         if (req.calificacion() < 1.0 || req.calificacion() > 5.0) {
             throw new ReglaNegocioException("RB-03", "La calificacion debe estar entre 1.0 y 5.0.");
         }
@@ -90,21 +115,37 @@ public class TareaService {
         return toEntregaDto(entregaRepository.save(entrega));
     }
 
-    /** RF-41: estado (pendiente/entregada/calificada) de las tareas de un curso para un estudiante. */
+    /**
+     * RF-41: estado (pendiente/entregada/calificada) de las tareas de un curso
+     * para un estudiante.
+     *
+     * <p>RNF-07: el estudiante consulta siempre el suyo; el acudiente, el de
+     * sus tutelados (RB-08); el docente, el de los estudiantes de sus cursos.</p>
+     */
     @Transactional(readOnly = true)
     public List<EstadoTareaDto> estadoTareas(Long estudianteId, Long cursoId) {
+        Long consultado = contexto.resolverEstudianteId(estudianteId);
+        contexto.exigirAccesoCurso(cursoId);
         return tareaRepository.findByCursoId(cursoId).stream()
                 .map(t -> new EstadoTareaDto(t.getId(), t.getTitulo(), t.getFechaLimite(),
-                        estadoDe(t.getId(), estudianteId)))
+                        estadoDe(t.getId(), consultado)))
                 .toList();
     }
 
-    /** RF-42: tareas proximas a vencer en los proximos {dias} dias. */
+    /**
+     * RF-42: tareas proximas a vencer en los proximos {dias} dias, acotadas a
+     * los cursos que el solicitante alcanza (RNF-07). Antes de la Fase 2 este
+     * listado era institucional y filtraba tareas de cursos ajenos.
+     */
     @Transactional(readOnly = true)
     public List<TareaDto> proximasAVencer(int dias) {
         LocalDate hoy = LocalDate.now();
-        return tareaRepository.findByFechaLimiteBetween(hoy, hoy.plusDays(dias))
-                .stream().map(TareaService::toTareaDto).toList();
+        List<TareaJpaEntity> tareas = tareaRepository.findByFechaLimiteBetween(hoy, hoy.plusDays(dias));
+        if (!contexto.tieneVisionInstitucional()) {
+            Set<Long> cursos = contexto.cursosVisibles();
+            tareas = tareas.stream().filter(t -> cursos.contains(t.getCursoId())).toList();
+        }
+        return tareas.stream().map(TareaService::toTareaDto).toList();
     }
 
     private EstadoEntrega estadoDe(Long tareaId, Long estudianteId) {

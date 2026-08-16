@@ -1,5 +1,6 @@
 package com.educktrack.notificaciones.application;
 
+import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.notificaciones.domain.CanalNotificacion;
 import com.educktrack.notificaciones.domain.TipoNotificacion;
 import com.educktrack.notificaciones.infrastructure.persistence.ConfiguracionNotificacionJpaEntity;
@@ -36,15 +37,18 @@ public class NotificacionService {
     private final ConfiguracionNotificacionRepository configRepository;
     private final UsuarioRepository usuarioRepository;
     private final JavaMailSender mailSender;
+    private final ContextoUsuario contexto;
 
     public NotificacionService(NotificacionRepository notificacionRepository,
                                ConfiguracionNotificacionRepository configRepository,
                                UsuarioRepository usuarioRepository,
-                               JavaMailSender mailSender) {
+                               JavaMailSender mailSender,
+                               ContextoUsuario contexto) {
         this.notificacionRepository = notificacionRepository;
         this.configRepository = configRepository;
         this.usuarioRepository = usuarioRepository;
         this.mailSender = mailSender;
+        this.contexto = contexto;
     }
 
     /** RF-52 / HU-28: configura el canal institucional. */
@@ -93,9 +97,16 @@ public class NotificacionService {
         return toDto(guardada);
     }
 
-    /** RF-54 / HU-27: bandeja del usuario con contador de no leidas. */
+    /**
+     * RF-54 / HU-27: bandeja del usuario con contador de no leidas.
+     *
+     * <p>RNF-07: la bandeja es personal. Antes de la Fase 2 el identificador
+     * venia del cliente sin comprobacion, de modo que cualquier cuenta
+     * autenticada podia leer los mensajes de otra cambiando el parametro.</p>
+     */
     @Transactional(readOnly = true)
     public BandejaDto bandeja(Long usuarioId) {
+        contexto.exigirCuentaPropia(usuarioId);
         List<NotificacionDto> lista = notificacionRepository
                 .findByDestinatarioUsuarioIdOrderByFechaCreacionDesc(usuarioId)
                 .stream().map(NotificacionService::toDto).toList();
@@ -103,11 +114,12 @@ public class NotificacionService {
         return new BandejaDto(noLeidas, lista);
     }
 
-    /** HU-27: marca una notificacion como leida. */
+    /** HU-27 / RNF-07: marca como leida una notificacion propia del usuario. */
     @Transactional
     public void marcarLeida(Long id) {
         NotificacionJpaEntity n = notificacionRepository.findById(id)
                 .orElseThrow(() -> new ReglaNegocioException("RF-54", "La notificacion no existe."));
+        contexto.exigirCuentaPropia(n.getDestinatarioUsuarioId());
         n.setLeida(true);
         notificacionRepository.save(n);
     }

@@ -10,6 +10,7 @@ import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.EstudianteRi
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.ItemAsistencia;
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.RegistrarAsistenciaRequest;
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.ReporteAsistenciaDto;
+import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,14 +32,22 @@ public class AsistenciaService {
     public static final double PORCENTAJE_MINIMO = 80.0;
 
     private final AsistenciaRepository asistenciaRepository;
+    private final ContextoUsuario contexto;
 
-    public AsistenciaService(AsistenciaRepository asistenciaRepository) {
+    public AsistenciaService(AsistenciaRepository asistenciaRepository, ContextoUsuario contexto) {
         this.asistenciaRepository = asistenciaRepository;
+        this.contexto = contexto;
     }
 
-    /** RF-26 / HU-14 / RB-06: registra la asistencia del curso en un bloque y fecha. */
+    /**
+     * RF-26 / HU-14 / RB-06: registra la asistencia del curso en un bloque y fecha.
+     *
+     * <p>RNF-07: solo el docente que dicta esa materia en ese curso puede pasar
+     * lista de ella.</p>
+     */
     @Transactional
     public List<AsistenciaDto> registrar(RegistrarAsistenciaRequest req) {
+        contexto.exigirGestionMateria(req.cursoId(), req.materiaId());
         List<AsistenciaJpaEntity> guardados = new ArrayList<>();
         LocalDateTime ahora = LocalDateTime.now();
         for (ItemAsistencia item : req.registros()) {
@@ -78,23 +87,26 @@ public class AsistenciaService {
     @Transactional
     public AsistenciaDto editar(Long id, EditarAsistenciaRequest req) {
         AsistenciaJpaEntity e = obtener(id);
+        contexto.exigirGestionMateria(e.getCursoId(), e.getMateriaId()); // RNF-07
         Asistencia dominio = toDominio(e);
         dominio.cambiarEstado(req.estado(), LocalDateTime.now());
         e.setEstado(dominio.getEstado());
         return toDto(asistenciaRepository.save(e));
     }
 
-    /** RF-28 / RB-04: reporte de asistencia de un estudiante en una materia y periodo. */
+    /** RF-28 / RB-04 / RNF-07: reporte de asistencia de un estudiante en una materia y periodo. */
     @Transactional(readOnly = true)
     public ReporteAsistenciaDto reporteEstudiante(Long estudianteId, Long materiaId, Long periodoAcademicoId) {
+        contexto.exigirAccesoEstudiante(estudianteId);
         List<AsistenciaJpaEntity> registros = asistenciaRepository
                 .findByEstudianteIdAndMateriaIdAndPeriodoAcademicoId(estudianteId, materiaId, periodoAcademicoId);
         return construirReporte(estudianteId, materiaId, periodoAcademicoId, registros);
     }
 
-    /** RF-30 / RB-04: estudiantes de un curso/materia por debajo del minimo. */
+    /** RF-30 / RB-04 / RNF-07: estudiantes de un curso/materia por debajo del minimo. */
     @Transactional(readOnly = true)
     public List<EstudianteRiesgoDto> estudiantesEnRiesgo(Long cursoId, Long materiaId, Long periodoAcademicoId) {
+        contexto.exigirAccesoCurso(cursoId);
         Map<Long, List<AsistenciaJpaEntity>> porEstudiante = asistenciaRepository
                 .findByCursoIdAndMateriaIdAndPeriodoAcademicoId(cursoId, materiaId, periodoAcademicoId)
                 .stream().collect(Collectors.groupingBy(AsistenciaJpaEntity::getEstudianteId));

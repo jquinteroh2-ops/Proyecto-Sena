@@ -8,6 +8,7 @@ import com.educktrack.estudiantes.infrastructure.rest.EstudianteDtos.ActualizarE
 import com.educktrack.estudiantes.infrastructure.rest.EstudianteDtos.EstudianteDto;
 import com.educktrack.estudiantes.infrastructure.rest.EstudianteDtos.RegistrarEstudianteRequest;
 import com.educktrack.estudiantes.infrastructure.rest.EstudianteDtos.RetirarEstudianteRequest;
+import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,9 +23,11 @@ import java.util.List;
 public class GestionEstudianteService {
 
     private final EstudianteRepository estudianteRepository;
+    private final ContextoUsuario contexto;
 
-    public GestionEstudianteService(EstudianteRepository estudianteRepository) {
+    public GestionEstudianteService(EstudianteRepository estudianteRepository, ContextoUsuario contexto) {
         this.estudianteRepository = estudianteRepository;
+        this.contexto = contexto;
     }
 
     /** RF-06 / HU-05: registra un estudiante en estado ACTIVO. */
@@ -58,15 +61,26 @@ public class GestionEstudianteService {
         return toDto(estudianteRepository.save(e));
     }
 
-    /** RF-08: consulta el perfil de un estudiante. */
+    /**
+     * RF-08 / RNF-07: consulta el perfil de un estudiante. El docente solo
+     * alcanza a los estudiantes activos de los cursos que atiende.
+     */
     @Transactional(readOnly = true)
     public EstudianteDto consultar(Long id) {
+        contexto.exigirAccesoEstudiante(id);
         return toDto(obtener(id));
     }
 
+    /**
+     * RNF-07: el listado devuelve la institucion completa a Coordinacion,
+     * Rectoria y Administracion, y solo los estudiantes propios al resto.
+     */
     @Transactional(readOnly = true)
     public List<EstudianteDto> listar() {
-        return estudianteRepository.findAll().stream().map(GestionEstudianteService::toDto).toList();
+        List<EstudianteJpaEntity> estudiantes = contexto.tieneVisionInstitucional()
+                ? estudianteRepository.findAll()
+                : estudianteRepository.findAllById(contexto.estudiantesVisibles());
+        return estudiantes.stream().map(GestionEstudianteService::toDto).toList();
     }
 
     /** RF-10 / RB-20: retira un estudiante registrando motivo, fecha y autorizacion. */

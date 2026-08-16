@@ -9,6 +9,7 @@ import com.educktrack.estudiantes.infrastructure.persistence.EstudianteRepositor
 import com.educktrack.matriculas.domain.EstadoMatriculaCurso;
 import com.educktrack.matriculas.infrastructure.persistence.MatriculaJpaEntity;
 import com.educktrack.matriculas.infrastructure.persistence.MatriculaRepository;
+import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.notas.application.CalificacionService;
 import com.educktrack.notas.domain.Calificacion;
 import com.educktrack.notas.infrastructure.persistence.CalificacionJpaEntity;
@@ -37,19 +38,22 @@ public class ReporteService {
     private final PlanEstudiosRepository planRepository;
     private final EstudianteRepository estudianteRepository;
     private final CalificacionService calificacionService;
+    private final ContextoUsuario contexto;
 
     public ReporteService(CalificacionRepository calificacionRepository,
                           AsistenciaRepository asistenciaRepository,
                           MatriculaRepository matriculaRepository,
                           PlanEstudiosRepository planRepository,
                           EstudianteRepository estudianteRepository,
-                          CalificacionService calificacionService) {
+                          CalificacionService calificacionService,
+                          ContextoUsuario contexto) {
         this.calificacionRepository = calificacionRepository;
         this.asistenciaRepository = asistenciaRepository;
         this.matriculaRepository = matriculaRepository;
         this.planRepository = planRepository;
         this.estudianteRepository = estudianteRepository;
         this.calificacionService = calificacionService;
+        this.contexto = contexto;
     }
 
     /** RF-51 / HU-29: panel de indicadores institucionales. */
@@ -80,9 +84,15 @@ public class ReporteService {
         return new AsistenciaInstitucionalDto(total, ausInjust, promedio);
     }
 
-    /** RF-47 / HU-30: rendimiento academico por curso y periodo. */
+    /**
+     * RF-47 / HU-30: rendimiento academico por curso y periodo.
+     *
+     * <p>RNF-07: autoriza el curso una sola vez y a partir de ahi calcula los
+     * promedios sin volver a comprobar el acceso estudiante por estudiante.</p>
+     */
     @Transactional(readOnly = true)
     public RendimientoCursoDto rendimientoCurso(Long cursoId, Long periodoAcademicoId) {
+        contexto.exigirAccesoCurso(cursoId);
         List<Long> materias = planRepository.findByCursoId(cursoId).stream()
                 .map(PlanEstudiosJpaEntity::getMateriaId).toList();
 
@@ -100,7 +110,7 @@ public class ReporteService {
 
     private RendimientoEstudianteDto filaRendimiento(Long estudianteId, List<Long> materias, Long periodoId) {
         double promedio = materias.isEmpty() ? 0.0 : redondear(materias.stream()
-                .mapToDouble(mat -> calificacionService.promedio(estudianteId, mat, periodoId).promedio())
+                .mapToDouble(mat -> calificacionService.calcularPromedio(estudianteId, mat, periodoId).promedio())
                 .average().orElse(0.0));
         String nombre = estudianteRepository.findById(estudianteId)
                 .map(e -> e.getNombres() + " " + e.getApellidos()).orElse("Estudiante " + estudianteId);
