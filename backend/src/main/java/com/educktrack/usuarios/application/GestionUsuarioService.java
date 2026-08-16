@@ -1,5 +1,7 @@
 package com.educktrack.usuarios.application;
 
+import com.educktrack.auditoria.application.AuditoriaService;
+import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import com.educktrack.usuarios.domain.NombreRol;
 import com.educktrack.usuarios.domain.Usuario;
@@ -29,12 +31,14 @@ public class GestionUsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditoriaService auditoria;
 
     public GestionUsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository,
-                                 PasswordEncoder passwordEncoder) {
+                                 PasswordEncoder passwordEncoder, AuditoriaService auditoria) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditoria = auditoria;
     }
 
     /** RF-01 / HU-01: registra una cuenta con contrasena cifrada (RS-05) y roles. */
@@ -52,16 +56,26 @@ public class GestionUsuarioService {
 
         Set<RolJpaEntity> rolesGestionados = cargarRoles(roles);
         UsuarioJpaEntity guardado = usuarioRepository.save(UsuarioMapper.toEntity(usuario, rolesGestionados));
+
+        // RS-07: el alta de una cuenta y los roles con que nace son una
+        // operacion critica ("cambios de rol").
+        auditoria.registrar(TipoOperacion.USUARIO_CREADO, "usuario", guardado.getId(),
+                "Alta de la cuenta " + guardado.getCorreoInstitucional() + " con roles " + roles + ".");
         return toDto(guardado);
     }
 
-    /** RF-03 / HU-02: desactiva una cuenta sin eliminar su historial. */
+    /** RF-03 / HU-02 / RS-07: desactiva una cuenta sin eliminar su historial. */
     @Transactional
     public UsuarioDto desactivar(Long usuarioId) {
         UsuarioJpaEntity usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ReglaNegocioException("RF-03", "El usuario no existe."));
         usuario.setActivo(false);
-        return toDto(usuarioRepository.save(usuario));
+        UsuarioDto dto = toDto(usuarioRepository.save(usuario));
+
+        // HU-02: "se registra la fecha y el responsable de la desactivacion".
+        auditoria.registrar(TipoOperacion.USUARIO_DESACTIVADO, "usuario", usuarioId,
+                "Desactivacion de la cuenta " + usuario.getCorreoInstitucional() + ".");
+        return dto;
     }
 
     @Transactional(readOnly = true)

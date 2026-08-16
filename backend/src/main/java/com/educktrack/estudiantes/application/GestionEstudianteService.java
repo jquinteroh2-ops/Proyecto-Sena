@@ -8,6 +8,8 @@ import com.educktrack.estudiantes.infrastructure.rest.EstudianteDtos.ActualizarE
 import com.educktrack.estudiantes.infrastructure.rest.EstudianteDtos.EstudianteDto;
 import com.educktrack.estudiantes.infrastructure.rest.EstudianteDtos.RegistrarEstudianteRequest;
 import com.educktrack.estudiantes.infrastructure.rest.EstudianteDtos.RetirarEstudianteRequest;
+import com.educktrack.auditoria.application.AuditoriaService;
+import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import org.springframework.stereotype.Service;
@@ -24,10 +26,13 @@ public class GestionEstudianteService {
 
     private final EstudianteRepository estudianteRepository;
     private final ContextoUsuario contexto;
+    private final AuditoriaService auditoria;
 
-    public GestionEstudianteService(EstudianteRepository estudianteRepository, ContextoUsuario contexto) {
+    public GestionEstudianteService(EstudianteRepository estudianteRepository, ContextoUsuario contexto,
+                                    AuditoriaService auditoria) {
         this.estudianteRepository = estudianteRepository;
         this.contexto = contexto;
+        this.auditoria = auditoria;
     }
 
     /** RF-06 / HU-05: registra un estudiante en estado ACTIVO. */
@@ -83,7 +88,7 @@ public class GestionEstudianteService {
         return estudiantes.stream().map(GestionEstudianteService::toDto).toList();
     }
 
-    /** RF-10 / RB-20: retira un estudiante registrando motivo, fecha y autorizacion. */
+    /** RF-10 / RB-20 / RS-07: retira un estudiante registrando motivo, fecha y autorizacion. */
     @Transactional
     public EstudianteDto retirar(Long id, RetirarEstudianteRequest req) {
         EstudianteJpaEntity e = obtener(id);
@@ -94,7 +99,14 @@ public class GestionEstudianteService {
         e.setMotivoRetiro(req.motivo());
         e.setAutorizadoRetiro(req.autorizadoPor());
         e.setFechaRetiro(LocalDate.now());
-        return toDto(estudianteRepository.save(e));
+        EstudianteDto dto = toDto(estudianteRepository.save(e));
+
+        // RS-07 nombra los retiros como operacion critica; HU-07 exige ademas
+        // dejar constancia del motivo y de quien lo autorizo.
+        auditoria.registrar(TipoOperacion.ESTUDIANTE_RETIRADO, "estudiante", id,
+                "Retiro de " + e.getNombres() + " " + e.getApellidos() + " (documento " + e.getDocumento()
+                        + "). Motivo: " + req.motivo() + ". Autorizado por: " + req.autorizadoPor() + ".");
+        return dto;
     }
 
     private EstudianteJpaEntity obtener(Long id) {

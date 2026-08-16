@@ -1,5 +1,7 @@
 package com.educktrack.notas.application;
 
+import com.educktrack.auditoria.application.AuditoriaService;
+import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.notas.infrastructure.persistence.PonderacionEvaluacionJpaEntity;
 import com.educktrack.notas.infrastructure.persistence.PonderacionRepository;
 import com.educktrack.notas.infrastructure.rest.NotaDtos.ConfigurarPonderacionRequest;
@@ -19,9 +21,11 @@ import java.util.List;
 public class PonderacionService {
 
     private final PonderacionRepository ponderacionRepository;
+    private final AuditoriaService auditoria;
 
-    public PonderacionService(PonderacionRepository ponderacionRepository) {
+    public PonderacionService(PonderacionRepository ponderacionRepository, AuditoriaService auditoria) {
         this.ponderacionRepository = ponderacionRepository;
+        this.auditoria = auditoria;
     }
 
     /** RF-20 / RB-07: define las ponderaciones de una materia/periodo (suman 100%). */
@@ -47,6 +51,13 @@ public class PonderacionService {
             e.setPorcentaje(item.porcentaje());
             ponderacionRepository.save(e);
         }
+
+        // HU-10: "los cambios quedan registrados en el log de auditoria".
+        // Cambiar la ponderacion recalcula todos los promedios de la materia
+        // (RB-07), de modo que es una operacion critica aunque no toque notas.
+        auditoria.registrar(TipoOperacion.PONDERACION_CONFIGURADA, "materia", req.materiaId(),
+                "Ponderacion de la materia " + req.materiaId() + " en el periodo "
+                        + req.periodoAcademicoId() + " establecida en " + req.ponderaciones() + ".");
         return listar(req.materiaId(), req.periodoAcademicoId());
     }
 

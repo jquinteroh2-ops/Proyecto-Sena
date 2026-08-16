@@ -10,9 +10,9 @@
 
 ## 1. Cómo continuar
 
-**La siguiente fase pendiente es la 4 (Auditoría).** Las fases 1, 2 y 3 están
-cerradas. Lo que quedó deliberadamente fuera de la Fase 3 está anotado en la
-sección 6.
+**La siguiente fase pendiente es la 5 (Notificaciones por eventos Spring).** Las
+fases 1, 2, 3 y 4 están cerradas. Lo que quedó deliberadamente fuera está
+anotado en las secciones 6 y 6-bis.
 
 Antes de tocar nada, leer la sección 2 (reglas absolutas). Y para compilar:
 
@@ -54,9 +54,9 @@ ya funciona.
 
 | | Estado |
 |---|---|
-| Rama de trabajo | `main` (las fases 1, 2 y 3 se integraron ahí el 16/08/2026) |
-| Pruebas | **64 en verde** |
-| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR) y 3 (Migraciones) |
+| Rama de trabajo | `main` (fases 1–4 integradas el 16/08/2026) |
+| Pruebas | **80 en verde** |
+| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones) y 4 (Auditoría) |
 | Desplegado | Sí, en Railway (ver sección 5) |
 
 ### Fase 1 — Identidad (cerrada)
@@ -260,6 +260,71 @@ es destructivo y la regla dice consultar antes. **Pendiente de decisión.**
 CI**. V10 se verificó aplicándola contra el MySQL real de Railway, que es una
 verificación de verdad pero manual. Es el caso de uso natural de Testcontainers
 (ver sección 4); sigue bloqueado por Docker.
+
+---
+
+## 6-bis. Fase 4 — Auditoría (cerrada)
+
+**RS-07** exige que toda operación crítica quede registrada con usuario, fecha y
+descripción; **RF-63** que se registre automáticamente; **RF-05** un historial de
+inicios de sesión. Nada de esto existía: eran los dos requisitos completamente
+sin implementar del proyecto.
+
+### Lo que se hizo
+
+**Migración V11 — tabla `auditoria`.** Una sola tabla para operaciones críticas y
+accesos: un inicio de sesión es una operación crítica más, y separarlos obligaría
+a consultar en dos sitios para responder "qué hizo esta persona".
+
+El campo `usuario` guarda el **correo en texto, no una clave foránea**. Es
+deliberado: el registro debe sobrevivir al borrado de la cuenta y debe poder
+anotar intentos de acceso con correos que no existen. Un log que se queda sin
+filas por un `ON DELETE` no sirve para auditar.
+
+**Módulo `auditoria`** con dos servicios separados a propósito:
+
+- `AuditoriaService` — **el único punto por el que se escribe el log**. El
+  usuario se resuelve del contexto de seguridad, **no lo pasa el llamador**: un
+  log donde cada servicio elige qué nombre escribe es falsificable por descuido.
+- `ConsultaAuditoriaService` — solo lectura, siempre paginada.
+
+**Dos decisiones sobre transacciones que conviene no revertir sin pensarlo:**
+
+1. `registrar(...)` participa de la transacción del llamador. Si la operación se
+   deshace, su anotación también: auditar algo que no ocurrió induce a error a
+   quien luego revisa.
+2. `registrarAcceso(...)` abre transacción propia (`REQUIRES_NEW`), porque el
+   caso que más importa auditar es justo el que **falla**, y no debe arrastrarlo
+   el rollback de la autenticación rechazada.
+
+**Operaciones registradas** (enum `TipoOperacion`, cerrado a propósito para que
+añadir una sea una decisión explícita): alta y desactivación de cuenta (HU-02),
+retiro de estudiante (HU-07), matrícula y anulación, nota registrada, editada y
+novedad (RS-07, HU-22), cierre de corte (HU-20), justificación de inasistencia
+(HU-15), ponderación (HU-10), y accesos exitosos y fallidos (RF-05).
+
+En las ediciones de nota **el log guarda el valor anterior**: una nota cambiada
+sin saber de qué valor venía no es auditable.
+
+**Endpoints** `GET /api/auditoria` y `GET /api/auditoria/accesos`, ambos
+**solo Administrador**. El log revela qué hizo cada persona y a qué hora;
+abrirlo a más roles convertiría una herramienta de control en una de vigilancia
+entre compañeros. No hay endpoint de escritura: el registro lo hace el sistema
+(RF-63) desde los casos de uso.
+
+En el acceso fallido **no se anota el motivo exacto** (cuenta inexistente frente
+a contraseña errónea) para no convertir el log en un oráculo que confirme qué
+correos están dados de alta.
+
+### Lo que quedó fuera
+
+**HU-03 (matriz de permisos por rol y módulo) no se auditó porque no existe.**
+Los roles hoy son fijos y los permisos están en anotaciones `@PreAuthorize`, no
+en datos configurables. Cuando esa funcionalidad se implemente, `TipoOperacion`
+necesitará un valor nuevo.
+
+**HU-02 pide además notificar por correo al usuario desactivado.** Eso es
+notificaciones, no auditoría: entra de forma natural en la **Fase 5**.
 
 ---
 

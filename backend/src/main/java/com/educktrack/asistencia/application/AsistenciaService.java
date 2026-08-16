@@ -10,6 +10,8 @@ import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.EstudianteRi
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.ItemAsistencia;
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.RegistrarAsistenciaRequest;
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.ReporteAsistenciaDto;
+import com.educktrack.auditoria.application.AuditoriaService;
+import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import org.springframework.stereotype.Service;
@@ -33,10 +35,13 @@ public class AsistenciaService {
 
     private final AsistenciaRepository asistenciaRepository;
     private final ContextoUsuario contexto;
+    private final AuditoriaService auditoria;
 
-    public AsistenciaService(AsistenciaRepository asistenciaRepository, ContextoUsuario contexto) {
+    public AsistenciaService(AsistenciaRepository asistenciaRepository, ContextoUsuario contexto,
+                             AuditoriaService auditoria) {
         this.asistenciaRepository = asistenciaRepository;
         this.contexto = contexto;
+        this.auditoria = auditoria;
     }
 
     /**
@@ -72,7 +77,7 @@ public class AsistenciaService {
         return guardados.stream().map(AsistenciaService::toDto).toList();
     }
 
-    /** RF-27 / HU-15: justifica una inasistencia (no afecta el % minimo, RB-04). */
+    /** RF-27 / HU-15 / RS-07: justifica una inasistencia (no afecta el % minimo, RB-04). */
     @Transactional
     public AsistenciaDto justificar(Long id, String motivo) {
         AsistenciaJpaEntity e = obtener(id);
@@ -80,7 +85,15 @@ public class AsistenciaService {
         dominio.justificar(motivo);
         e.setJustificada(dominio.isJustificada());
         e.setMotivoJustificacion(dominio.getMotivoJustificacion());
-        return toDto(asistenciaRepository.save(e));
+        AsistenciaDto dto = toDto(asistenciaRepository.save(e));
+
+        // HU-15: "la accion queda registrada en el log de auditoria". Justificar
+        // altera el porcentaje que decide el derecho a evaluacion (RB-04), de
+        // modo que debe poder rastrearse quien lo hizo.
+        auditoria.registrar(TipoOperacion.ASISTENCIA_JUSTIFICADA, "asistencia", id,
+                "Inasistencia del estudiante " + e.getEstudianteId() + " del " + e.getFecha()
+                        + " justificada. Motivo: " + motivo + ".");
+        return dto;
     }
 
     /** RF-29 / RB-06: edita el estado dentro de las 48h siguientes al registro. */
