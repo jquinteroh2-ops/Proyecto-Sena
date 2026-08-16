@@ -1,5 +1,7 @@
 package com.educktrack.notas.application;
 
+import com.educktrack.auditoria.application.AuditoriaService;
+import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.notas.domain.Calificacion;
 import com.educktrack.notas.domain.TipoEvaluacion;
@@ -41,17 +43,20 @@ public class CalificacionService {
     private final CierreCorteRepository cierreRepository;
     private final NovedadNotaRepository novedadRepository;
     private final ContextoUsuario contexto;
+    private final AuditoriaService auditoria;
 
     public CalificacionService(CalificacionRepository calificacionRepository,
                                PonderacionRepository ponderacionRepository,
                                CierreCorteRepository cierreRepository,
                                NovedadNotaRepository novedadRepository,
-                               ContextoUsuario contexto) {
+                               ContextoUsuario contexto,
+                               AuditoriaService auditoria) {
         this.calificacionRepository = calificacionRepository;
         this.ponderacionRepository = ponderacionRepository;
         this.cierreRepository = cierreRepository;
         this.novedadRepository = novedadRepository;
         this.contexto = contexto;
+        this.auditoria = auditoria;
     }
 
     /**
@@ -75,7 +80,14 @@ public class CalificacionService {
         e.setValor(nota.getValor());
         e.setDescripcion(req.descripcion());
         e.setFechaRegistro(LocalDateTime.now());
-        return toDto(calificacionRepository.save(e));
+        CalificacionJpaEntity guardada = calificacionRepository.save(e);
+
+        // RS-07 nombra los cambios de nota como operacion critica.
+        auditoria.registrar(TipoOperacion.NOTA_REGISTRADA, "calificacion", guardada.getId(),
+                "Nota " + guardada.getValor() + " (" + guardada.getTipo() + ") al estudiante "
+                        + guardada.getEstudianteId() + " en la materia " + guardada.getMateriaId()
+                        + ", curso " + guardada.getCursoId() + ".");
+        return toDto(guardada);
     }
 
     /** RF-32 / RB-15: edita una nota solo si el corte no esta cerrado. */
@@ -87,8 +99,16 @@ public class CalificacionService {
             throw new ReglaNegocioException("RB-15",
                     "El corte esta cerrado; use una novedad de nota para corregir (RF-36).");
         }
+        double valorAnterior = e.getValor();
         e.setValor(new Calificacion(nuevoValor).getValor()); // RB-03
-        return toDto(calificacionRepository.save(e));
+        CalificacionDto dto = toDto(calificacionRepository.save(e));
+
+        // RS-07: el log guarda el valor anterior, porque una nota editada sin
+        // saber de que valor venia no es auditable.
+        auditoria.registrar(TipoOperacion.NOTA_EDITADA, "calificacion", id,
+                "Nota del estudiante " + e.getEstudianteId() + " en la materia " + e.getMateriaId()
+                        + " cambiada de " + valorAnterior + " a " + e.getValor() + ".");
+        return dto;
     }
 
     /** RF-33 / RB-07 / RNF-07: promedio ponderado del estudiante en una materia/periodo. */
@@ -152,6 +172,11 @@ public class CalificacionService {
         c.setFechaCierre(LocalDateTime.now());
         c.setCerradoPor(usuarioActual());
         cierreRepository.save(c);
+
+        // HU-20: "el cierre queda registrado en el log de auditoria".
+        auditoria.registrar(TipoOperacion.CORTE_CERRADO, "cierre_corte", c.getId(),
+                "Cierre del corte del curso " + cursoId + " en el periodo " + periodoAcademicoId
+                        + ". A partir de aqui las notas solo se corrigen por novedad (RB-15).");
     }
 
     /** RF-36 / RB-15: correccion auditada de una nota de un corte cerrado. */
@@ -175,7 +200,15 @@ public class CalificacionService {
         novedadRepository.save(n);
 
         e.setValor(valorNuevo);
-        return toDto(calificacionRepository.save(e));
+        CalificacionDto dto = toDto(calificacionRepository.save(e));
+
+        // HU-22: la correccion sobre un corte cerrado deja rastro en dos sitios,
+        // 'novedad_nota' (el historico que ve el docente, RB-15) y el log de
+        // auditoria (RS-07). Son publicos distintos, no una duplicacion.
+        auditoria.registrar(TipoOperacion.NOTA_NOVEDAD, "calificacion", calificacionId,
+                "Novedad sobre corte cerrado: nota del estudiante " + e.getEstudianteId()
+                        + " corregida de " + valorAnterior + " a " + valorNuevo + ". Motivo: " + motivo + ".");
+        return dto;
     }
 
     /** RF-35 / RB-19 / RD-11 / RNF-07: genera el boletin de un estudiante (corte cerrado). */

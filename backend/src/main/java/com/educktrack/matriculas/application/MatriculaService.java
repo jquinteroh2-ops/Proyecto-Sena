@@ -1,5 +1,7 @@
 package com.educktrack.matriculas.application;
 
+import com.educktrack.auditoria.application.AuditoriaService;
+import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.configuracion.infrastructure.persistence.PeriodoAcademicoRepository;
 import com.educktrack.cursos.domain.Curso;
 import com.educktrack.cursos.infrastructure.persistence.CursoJpaEntity;
@@ -33,17 +35,20 @@ public class MatriculaService {
     private final CursoRepository cursoRepository;
     private final PeriodoAcademicoRepository periodoRepository;
     private final PlanEstudiosRepository planEstudiosRepository;
+    private final AuditoriaService auditoria;
 
     public MatriculaService(MatriculaRepository matriculaRepository,
                             EstudianteRepository estudianteRepository,
                             CursoRepository cursoRepository,
                             PeriodoAcademicoRepository periodoRepository,
-                            PlanEstudiosRepository planEstudiosRepository) {
+                            PlanEstudiosRepository planEstudiosRepository,
+                            AuditoriaService auditoria) {
         this.matriculaRepository = matriculaRepository;
         this.estudianteRepository = estudianteRepository;
         this.cursoRepository = cursoRepository;
         this.periodoRepository = periodoRepository;
         this.planEstudiosRepository = planEstudiosRepository;
+        this.auditoria = auditoria;
     }
 
     @Transactional
@@ -82,6 +87,12 @@ public class MatriculaService {
 
         // RB-11: el estudiante queda inscrito en todas las materias del plan del curso.
         int materiasInscritas = planEstudiosRepository.findByCursoId(req.cursoId()).size();
+
+        // RS-07: la matricula cambia la situacion academica del estudiante y es
+        // el punto de partida de RB-01, de modo que debe quedar rastro.
+        auditoria.registrar(TipoOperacion.MATRICULA_REGISTRADA, "matricula", guardada.getId(),
+                "Matricula del estudiante " + req.estudianteId() + " en el curso " + req.cursoId()
+                        + ", periodo " + req.periodoAcademicoId() + ".");
         return toDto(guardada, materiasInscritas);
     }
 
@@ -92,6 +103,11 @@ public class MatriculaService {
                 .orElseThrow(() -> new ReglaNegocioException("RF-09", "La matricula no existe."));
         m.setEstado(EstadoMatriculaCurso.RETIRADA);
         matriculaRepository.save(m);
+
+        // RS-07 nombra los retiros como operacion critica.
+        auditoria.registrar(TipoOperacion.MATRICULA_ANULADA, "matricula", matriculaId,
+                "Matricula del estudiante " + m.getEstudianteId() + " en el curso " + m.getCursoId()
+                        + " marcada como RETIRADA.");
     }
 
     private static MatriculaDto toDto(MatriculaJpaEntity m, int materiasInscritas) {
