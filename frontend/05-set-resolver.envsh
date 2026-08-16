@@ -1,0 +1,23 @@
+#!/bin/sh
+# Exporta NGINX_LOCAL_RESOLVERS a partir de /etc/resolv.conf para que la
+# plantilla de nginx pueda declarar 'resolver' sin fijar una IP en el repo.
+#
+# La imagen oficial trae 15-local-resolvers.envsh, pero no define esta variable
+# en todas las versiones, y sin ella la plantilla se queda con el literal
+# ${NGINX_LOCAL_RESOLVERS} y nginx aborta al arrancar. Este script corre antes
+# (05 < 20) y el entrypoint lo *sourcea* por la extension .envsh, de modo que
+# la variable llega al envsubst de la plantilla.
+#
+# Las direcciones IPv6 se envuelven en corchetes, que es como las espera la
+# directiva resolver de nginx; la red privada de Railway es IPv6.
+
+NGINX_LOCAL_RESOLVERS="$(awk '/^nameserver/ { print ($2 ~ /:/) ? "[" $2 "]" : $2 }' /etc/resolv.conf | tr '\n' ' ' | sed 's/ *$//')"
+
+# Sin resolutor utilizable, cae al de Docker en compose; es preferible un valor
+# por defecto sensato a que el contenedor no arranque.
+if [ -z "$NGINX_LOCAL_RESOLVERS" ]; then
+    NGINX_LOCAL_RESOLVERS="127.0.0.11"
+fi
+
+export NGINX_LOCAL_RESOLVERS
+echo "05-set-resolver.envsh: resolver = $NGINX_LOCAL_RESOLVERS"
