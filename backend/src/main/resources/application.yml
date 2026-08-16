@@ -19,7 +19,18 @@ spring:
 
   flyway:
     enabled: true
-    baseline-on-migrate: true
+    # DECISION DE DISENO (Fase 3): baseline-on-migrate queda en false.
+    #
+    # En true, ante una base de datos con tablas pero sin historial de Flyway,
+    # la herramienta se inventa una linea base y sigue adelante como si el
+    # esquema fuera suyo: o se salta migraciones o intenta crear tablas que ya
+    # existen. Justo lo contrario de que Flyway sea la unica fuente de verdad
+    # del esquema (RS-02), y ademas en silencio.
+    #
+    # En false, ese caso falla con un error explicito y obliga a mirar que pasa,
+    # que es el comportamiento que se quiere. El esquema de EduckTrack siempre
+    # nace de estas migraciones, de modo que la opcion no aportaba nada.
+    baseline-on-migrate: false
     locations: classpath:db/migration
 
   mail:
