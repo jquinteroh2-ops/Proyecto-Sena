@@ -35,6 +35,14 @@ public class DocenteJpaEntity {
     @Column(name = "documento", length = 30, nullable = false, unique = true)
     private String documento;
 
+    /**
+     * Cuenta de usuario asociada al docente (V9, RS-03 / RNF-07). Es opcional:
+     * el docente puede registrarse antes de que se le cree la cuenta. Permite
+     * resolver "usuario autenticado -> docente propio" y aplicar ownership.
+     */
+    @Column(name = "usuario_id", unique = true)
+    private Long usuarioId;
+
     @Column(name = "nombres", length = 100, nullable = false)
     private String nombres;
 

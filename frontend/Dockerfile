@@ -14,6 +14,18 @@ RUN npm run build
 # --- Etapa 2: servir estaticos con Nginx ---
 FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY default.conf.template /etc/nginx/templates/default.conf.template
+COPY 05-set-resolver.envsh /docker-entrypoint.d/05-set-resolver.envsh
+# El entrypoint ignora los scripts sin permiso de ejecucion, y el bit no
+# sobrevive a un COPY desde un checkout en Windows.
+RUN chmod +x /docker-entrypoint.d/05-set-resolver.envsh
+
+# Valores por defecto para docker-compose; en Railway los sobreescriben las
+# variables del servicio (PORT lo inyecta la plataforma y BACKEND_ORIGIN
+# apunta al dominio privado del backend).
+ENV PORT=80
+ENV BACKEND_ORIGIN=http://backend:8080
+ENV NGINX_ENVSUBST_FILTER=^(PORT|BACKEND_ORIGIN|NGINX_LOCAL_RESOLVERS)$
+
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

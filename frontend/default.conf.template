@@ -1,0 +1,55 @@
+# Nginx como proxy inverso delante del frontend (RS-01, RS-10).
+#
+# Plantilla: el entrypoint de la imagen oficial de nginx sustituye ${PORT},
+# ${BACKEND_ORIGIN} y ${NGINX_LOCAL_RESOLVERS} al arrancar. Asi el mismo
+# contenedor sirve para docker-compose (donde el backend es el host 'backend'
+# de la red y el puerto es el 80) y para un PaaS como Railway, que inyecta el
+# puerto por $PORT y expone el backend en un dominio privado propio.
+# NGINX_ENVSUBST_FILTER acota la sustitucion a esas tres variables, de modo que
+# las de nginx ($uri, $host, $request_uri...) llegan intactas al fichero final.
+server {
+    listen ${PORT};
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Resolutor del entorno (lo exporta 15-local-resolvers.envsh desde
+    # /etc/resolv.conf). Con un nombre literal en proxy_pass, nginx resuelve el
+    # upstream al cargar la configuracion y aborta si todavia no existe; en una
+    # red privada donde el backend puede arrancar despues, eso convierte una
+    # simple carrera de arranque en un contenedor caido. Con resolver mas una
+    # variable, el nombre se resuelve en cada peticion y el frontend sobrevive
+    # a que el backend aun no este listo.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
+
+    # SPA: cualquier ruta desconocida cae en index.html (React Router)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy de la API hacia el backend. $request_uri conserva la ruta completa
+    # y la query, que es lo que se pierde si se concatena una URI literal a una
+    # variable en proxy_pass.
+    location /api/ {
+        set $backend_origin "${BACKEND_ORIGIN}";
+        proxy_pass $backend_origin$request_uri;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Documentacion de la API accesible via el proxy (RS-09)
+    location /swagger-ui/ {
+        set $backend_origin "${BACKEND_ORIGIN}";
+        proxy_pass $backend_origin$request_uri;
+        proxy_set_header Host $host;
+    }
+
+    location /v3/api-docs {
+        set $backend_origin "${BACKEND_ORIGIN}";
+        proxy_pass $backend_origin$request_uri;
+        proxy_set_header Host $host;
+    }
+}

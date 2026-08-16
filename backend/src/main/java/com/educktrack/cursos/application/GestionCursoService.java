@@ -2,6 +2,7 @@ package com.educktrack.cursos.application;
 
 import com.educktrack.configuracion.infrastructure.persistence.PeriodoAcademicoRepository;
 import com.educktrack.cursos.domain.Curso;
+import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.cursos.infrastructure.persistence.CursoJpaEntity;
 import com.educktrack.cursos.infrastructure.persistence.CursoMapper;
 import com.educktrack.cursos.infrastructure.persistence.CursoRepository;
@@ -32,15 +33,18 @@ public class GestionCursoService {
     private final PeriodoAcademicoRepository periodoRepository;
     private final MatriculaRepository matriculaRepository;
     private final EstudianteRepository estudianteRepository;
+    private final ContextoUsuario contexto;
 
     public GestionCursoService(CursoRepository cursoRepository,
                                PeriodoAcademicoRepository periodoRepository,
                                MatriculaRepository matriculaRepository,
-                               EstudianteRepository estudianteRepository) {
+                               EstudianteRepository estudianteRepository,
+                               ContextoUsuario contexto) {
         this.cursoRepository = cursoRepository;
         this.periodoRepository = periodoRepository;
         this.matriculaRepository = matriculaRepository;
         this.estudianteRepository = estudianteRepository;
+        this.contexto = contexto;
     }
 
     /** RF-43: registra un curso (el cupo > 0 lo valida el dominio, RB-17). */
@@ -69,14 +73,23 @@ public class GestionCursoService {
         return toDto(cursoRepository.save(e));
     }
 
+    /** RNF-07: el curso solo lo consulta quien lo atiende o lo cursa. */
     @Transactional(readOnly = true)
     public CursoDto consultar(Long id) {
+        contexto.exigirAccesoCurso(id);
         return toDto(obtener(id));
     }
 
+    /**
+     * RNF-07: Coordinacion, Rectoria y Administracion ven todos los cursos; el
+     * docente, los de su carga academica; estudiante y acudiente, los suyos.
+     */
     @Transactional(readOnly = true)
     public List<CursoDto> listar() {
-        return cursoRepository.findAll().stream().map(GestionCursoService::toDto).toList();
+        List<CursoJpaEntity> cursos = contexto.tieneVisionInstitucional()
+                ? cursoRepository.findAll()
+                : cursoRepository.findAllById(contexto.cursosVisibles());
+        return cursos.stream().map(GestionCursoService::toDto).toList();
     }
 
     /** RF-46: consulta el cupo disponible de un curso (RB-17). */
@@ -88,9 +101,10 @@ public class GestionCursoService {
         return new CupoDto(curso.getCupoMaximo(), matriculados, disponibles);
     }
 
-    /** RF-45: lista los estudiantes matriculados en un curso con su estado. */
+    /** RF-45 / RNF-07: lista los estudiantes matriculados en un curso propio. */
     @Transactional(readOnly = true)
     public List<EstudianteEnCursoDto> listarEstudiantes(Long cursoId) {
+        contexto.exigirAccesoCurso(cursoId);
         obtener(cursoId);
         return matriculaRepository.findByCursoId(cursoId).stream()
                 .map(MatriculaJpaEntity::getEstudianteId)

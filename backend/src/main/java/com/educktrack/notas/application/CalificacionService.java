@@ -1,5 +1,6 @@
 package com.educktrack.notas.application;
 
+import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.notas.domain.Calificacion;
 import com.educktrack.notas.domain.TipoEvaluacion;
 import com.educktrack.notas.infrastructure.persistence.CalificacionJpaEntity;
@@ -39,20 +40,30 @@ public class CalificacionService {
     private final PonderacionRepository ponderacionRepository;
     private final CierreCorteRepository cierreRepository;
     private final NovedadNotaRepository novedadRepository;
+    private final ContextoUsuario contexto;
 
     public CalificacionService(CalificacionRepository calificacionRepository,
                                PonderacionRepository ponderacionRepository,
                                CierreCorteRepository cierreRepository,
-                               NovedadNotaRepository novedadRepository) {
+                               NovedadNotaRepository novedadRepository,
+                               ContextoUsuario contexto) {
         this.calificacionRepository = calificacionRepository;
         this.ponderacionRepository = ponderacionRepository;
         this.cierreRepository = cierreRepository;
         this.novedadRepository = novedadRepository;
+        this.contexto = contexto;
     }
 
-    /** RF-31 / RB-03 / HU-18: registra una calificacion en la escala 1.0-5.0. */
+    /**
+     * RF-31 / RB-03 / HU-18: registra una calificacion en la escala 1.0-5.0.
+     *
+     * <p>RNF-07: el docente solo califica las materias que tiene asignadas en
+     * ese curso; ser director de grupo (RB-02) da visibilidad sobre el curso
+     * pero no potestad para poner notas de materias ajenas.</p>
+     */
     @Transactional
     public CalificacionDto registrar(RegistrarCalificacionRequest req) {
+        contexto.exigirGestionMateria(req.cursoId(), req.materiaId());
         exigirCorteAbierto(req.cursoId(), req.periodoAcademicoId());
         Calificacion nota = new Calificacion(req.valor()); // valida RB-03
         CalificacionJpaEntity e = new CalificacionJpaEntity();
@@ -71,6 +82,7 @@ public class CalificacionService {
     @Transactional
     public CalificacionDto editar(Long id, double nuevoValor) {
         CalificacionJpaEntity e = obtener(id);
+        contexto.exigirGestionMateria(e.getCursoId(), e.getMateriaId()); // RNF-07
         if (cierreRepository.existsByCursoIdAndPeriodoAcademicoId(e.getCursoId(), e.getPeriodoAcademicoId())) {
             throw new ReglaNegocioException("RB-15",
                     "El corte esta cerrado; use una novedad de nota para corregir (RF-36).");
@@ -79,9 +91,21 @@ public class CalificacionService {
         return toDto(calificacionRepository.save(e));
     }
 
-    /** RF-33 / RB-07: promedio ponderado del estudiante en una materia/periodo. */
+    /** RF-33 / RB-07 / RNF-07: promedio ponderado del estudiante en una materia/periodo. */
     @Transactional(readOnly = true)
     public PromedioDto promedio(Long estudianteId, Long materiaId, Long periodoAcademicoId) {
+        contexto.exigirAccesoEstudiante(estudianteId);
+        return calcularPromedio(estudianteId, materiaId, periodoAcademicoId);
+    }
+
+    /**
+     * RB-07: el calculo puro del promedio, <strong>sin control de acceso</strong>.
+     * Solo debe invocarse desde un metodo que ya haya autorizado al solicitante
+     * sobre ese estudiante o sobre el curso completo; existe para que los
+     * reportes de grupo (RF-47) no repitan la comprobacion una vez por nota.
+     */
+    @Transactional(readOnly = true)
+    public PromedioDto calcularPromedio(Long estudianteId, Long materiaId, Long periodoAcademicoId) {
         List<CalificacionJpaEntity> notas = calificacionRepository
                 .findByEstudianteIdAndMateriaIdAndPeriodoAcademicoId(estudianteId, materiaId, periodoAcademicoId);
         List<PonderacionEvaluacionJpaEntity> ponderaciones = ponderacionRepository
@@ -154,9 +178,10 @@ public class CalificacionService {
         return toDto(calificacionRepository.save(e));
     }
 
-    /** RF-35 / RB-19 / RD-11: genera el boletin de un estudiante (corte cerrado). */
+    /** RF-35 / RB-19 / RD-11 / RNF-07: genera el boletin de un estudiante (corte cerrado). */
     @Transactional(readOnly = true)
     public BoletinDto boletin(Long estudianteId, Long cursoId, Long periodoAcademicoId) {
+        contexto.exigirAccesoEstudiante(estudianteId);
         if (!cierreRepository.existsByCursoIdAndPeriodoAcademicoId(cursoId, periodoAcademicoId)) {
             throw new ReglaNegocioException("RB-19",
                     "El boletin solo puede generarse cuando el corte del curso esta cerrado.");
@@ -168,7 +193,8 @@ public class CalificacionService {
 
         List<BoletinMateriaDto> materias = new ArrayList<>();
         for (Map.Entry<Long, List<CalificacionJpaEntity>> entry : porMateria.entrySet()) {
-            double prom = promedio(estudianteId, entry.getKey(), periodoAcademicoId).promedio();
+            // El acceso ya quedo autorizado al entrar al boletin (RNF-07).
+            double prom = calcularPromedio(estudianteId, entry.getKey(), periodoAcademicoId).promedio();
             materias.add(new BoletinMateriaDto(entry.getKey(), prom, prom >= Calificacion.NOTA_APROBATORIA));
         }
         double promedioGeneral = redondear(materias.stream()
@@ -178,9 +204,10 @@ public class CalificacionService {
         return new BoletinDto(estudianteId, cursoId, periodoAcademicoId, materias, promedioGeneral, aprobado);
     }
 
-    /** RF-37: historico completo de calificaciones de un estudiante. */
+    /** RF-37 / RNF-07: historico completo de calificaciones de un estudiante. */
     @Transactional(readOnly = true)
     public List<CalificacionDto> historico(Long estudianteId) {
+        contexto.exigirAccesoEstudiante(estudianteId);
         return calificacionRepository.findByEstudianteId(estudianteId).stream()
                 .map(CalificacionService::toDto).toList();
     }

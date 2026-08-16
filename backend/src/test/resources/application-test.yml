@@ -1,0 +1,19 @@
+# ==========================================================================
+# EduckTrack - Perfil de pruebas de persistencia
+#
+# Las migraciones Flyway V1..V9 son especificas de MySQL, de modo que aqui se
+# desactivan y el esquema lo deriva Hibernate de las propias entidades. Esto
+# hace que las pruebas de repositorio verifiquen exactamente lo que interesa:
+# que las consultas derivadas y el JPQL de ownership (RNF-07) casan con el
+# mapeo de las entidades. La equivalencia con el esquema real de MySQL la
+# sigue garantizando 'ddl-auto: validate' al arrancar la aplicacion.
+# ==========================================================================
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false

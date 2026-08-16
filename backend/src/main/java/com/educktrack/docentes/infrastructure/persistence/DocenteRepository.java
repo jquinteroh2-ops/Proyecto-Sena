@@ -13,4 +13,10 @@ public interface DocenteRepository extends JpaRepository<DocenteJpaEntity, Long>
     Optional<DocenteJpaEntity> findByDocumento(String documento);
 
     boolean existsByDocumento(String documento);
+
+    /** Resuelve el docente asociado a una cuenta de usuario (V9, RS-03 / RNF-07). */
+    Optional<DocenteJpaEntity> findByUsuarioId(Long usuarioId);
+
+    /** Indica si la cuenta ya esta vinculada a un docente (1:1, V9). */
+    boolean existsByUsuarioId(Long usuarioId);
 }
