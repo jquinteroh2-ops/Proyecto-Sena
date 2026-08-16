@@ -10,9 +10,9 @@
 
 ## 1. Cómo continuar
 
-**La siguiente fase pendiente es la 5 (Notificaciones por eventos Spring).** Las
-fases 1, 2, 3 y 4 están cerradas. Lo que quedó deliberadamente fuera está
-anotado en las secciones 6 y 6-bis.
+**La siguiente fase pendiente es la 6 (Reglas académicas).** Las fases 1 a 5
+están cerradas. Lo que quedó deliberadamente fuera está anotado al final de cada
+sección de fase.
 
 Antes de tocar nada, leer la sección 2 (reglas absolutas). Y para compilar:
 
@@ -54,9 +54,9 @@ ya funciona.
 
 | | Estado |
 |---|---|
-| Rama de trabajo | `main` (fases 1–4 integradas el 16/08/2026) |
-| Pruebas | **80 en verde** |
-| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones) y 4 (Auditoría) |
+| Rama de trabajo | `main` (fases 1–5 integradas el 16/08/2026) |
+| Pruebas | **94 en verde** |
+| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría) y 5 (Notificaciones) |
 | Desplegado | Sí, en Railway (ver sección 5) |
 
 ### Fase 1 — Identidad (cerrada)
@@ -325,6 +325,78 @@ necesitará un valor nuevo.
 
 **HU-02 pide además notificar por correo al usuario desactivado.** Eso es
 notificaciones, no auditoría: entra de forma natural en la **Fase 5**.
+
+---
+
+## 6-ter. Fase 5 — Notificaciones por eventos (cerrada)
+
+**El hallazgo de partida:** `NotificacionService.notificar()` **no lo llamaba
+ningún servicio de negocio**. Solo el envío manual (RF-53). Su Javadoc afirmaba
+ser el punto de entrada de las alertas automáticas, pero RB-13, RF-30, RF-42,
+RF-55 y RF-56 estaban sin implementar. El módulo existía y no notificaba nada.
+
+### Arquitectura
+
+Los servicios de negocio **publican hechos**, no envían avisos. Los eventos son
+records en el `domain` del módulo que los publica (`EventosDeNotas`,
+`EventosDeAsistencia`, …), y el módulo de notificaciones los escucha. Así
+`notas` no conoce a `notificaciones`, y cambiar el texto de una alerta no obliga
+a tocar el módulo de calificaciones.
+
+Los eventos declaran **lo que ocurrió**, no lo que hay que hacer: no llevan
+destinatarios ni textos. Eso vive en `AlertasAcademicasListener`.
+
+**Tres decisiones que conviene no revertir sin entenderlas:**
+
+1. **`@TransactionalEventListener(AFTER_COMMIT)`.** Un correo no se puede
+   deshacer: si la nota que provocó la alerta acaba en rollback, el aviso ya
+   habría salido. Avisar de algo que no ocurrió es peor que avisar tarde.
+2. **`notificar()` es `REQUIRES_NEW`.** Es la trampa clásica: en un listener
+   `AFTER_COMMIT` la transacción ya confirmó, y un `@Transactional` normal
+   participaría de ella sin llegar a persistir nunca. Además hace cada aviso
+   independiente.
+3. **Los listeners capturan sus propias excepciones.** Que no se pueda calificar
+   porque el servidor de correo está caído sería un acoplamiento absurdo.
+
+**`DestinatariosService`** traduce estudiante/docente/curso a cuentas de
+usuario. Existe porque una notificación se dirige a un `usuario_id` pero los
+hechos hablan de personas; sin él cada listener repetiría el cruce y alguno se
+olvidaría del acudiente. Los perfiles **sin cuenta** se descartan en silencio:
+el vínculo de V9 es opcional a propósito.
+
+### Alertas implementadas
+
+Por evento: bajo rendimiento (RB-13), asistencia bajo el mínimo (RF-30), cierre
+de corte (RF-55 a docentes + RF-56 boletín disponible a estudiantes y
+acudientes), retiro de estudiante al acudiente (HU-07) y desactivación de cuenta
+a la persona afectada (HU-02, que quedó pendiente de la Fase 4).
+
+Por calendario (`AlertasProgramadas`, `@Scheduled` diario a las 7:00): tareas
+próximas a vencer (RF-42) y fecha límite de cierre del periodo (RF-55). Van por
+planificador porque **nadie "hace" que una fecha se acerque**; el disparador es
+el calendario. Configurables con `educktrack.alertas.*`.
+
+**Dos detalles de diseño con intención:**
+
+- RF-30 avisa solo de quien **acaba de cruzar** el mínimo hacia abajo, no de
+  quien ya estaba por debajo. Una alerta diaria repetida se convierte en ruido y
+  deja de leerse. Para detectar el cruce basta medir a los estudiantes con
+  ausencia registrada: presente o tarde solo pueden subir el porcentaje.
+- RF-56 se dispara al **cerrar el corte**, no al generar el boletín. HU-21 pide
+  avisar "cuando el boletín está disponible", y lo está justo al cerrar (RB-19).
+  Dispararlo en la generación notificaría en cada consulta.
+
+### Lo que queda pendiente
+
+**El planificador no está preparado para varias instancias.** Con escalado
+horizontal (RNF-13) correría en todas y los avisos saldrían duplicados. Haría
+falta un cerrojo compartido; hoy el despliegue es de una sola instancia. **Es la
+deuda más importante de esta fase.**
+
+**El envío de correo sigue siendo best-effort** y depende de que
+`spring.mail.*` esté configurado; en Railway no lo está, así que hoy solo
+funciona la notificación interna. RF-52 permite elegir canal, y el valor por
+defecto es `INTERNO`.
 
 ---
 

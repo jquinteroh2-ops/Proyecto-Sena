@@ -5,6 +5,7 @@ import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import com.educktrack.usuarios.domain.NombreRol;
 import com.educktrack.usuarios.domain.Usuario;
+import com.educktrack.usuarios.domain.evento.EventosDeUsuarios.UsuarioDesactivado;
 import com.educktrack.usuarios.infrastructure.persistence.RolJpaEntity;
 import com.educktrack.usuarios.infrastructure.persistence.RolRepository;
 import com.educktrack.usuarios.infrastructure.persistence.UsuarioJpaEntity;
@@ -12,6 +13,7 @@ import com.educktrack.usuarios.infrastructure.persistence.UsuarioMapper;
 import com.educktrack.usuarios.infrastructure.persistence.UsuarioRepository;
 import com.educktrack.usuarios.infrastructure.rest.RegistrarUsuarioRequest;
 import com.educktrack.usuarios.infrastructure.rest.UsuarioDto;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,13 +34,16 @@ public class GestionUsuarioService {
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditoriaService auditoria;
+    private final ApplicationEventPublisher eventos;
 
     public GestionUsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository,
-                                 PasswordEncoder passwordEncoder, AuditoriaService auditoria) {
+                                 PasswordEncoder passwordEncoder, AuditoriaService auditoria,
+                                 ApplicationEventPublisher eventos) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditoria = auditoria;
+        this.eventos = eventos;
     }
 
     /** RF-01 / HU-01: registra una cuenta con contrasena cifrada (RS-05) y roles. */
@@ -75,6 +80,10 @@ public class GestionUsuarioService {
         // HU-02: "se registra la fecha y el responsable de la desactivacion".
         auditoria.registrar(TipoOperacion.USUARIO_DESACTIVADO, "usuario", usuarioId,
                 "Desactivacion de la cuenta " + usuario.getCorreoInstitucional() + ".");
+
+        // HU-02: "el sistema notifica al usuario afectado por correo institucional".
+        eventos.publishEvent(new UsuarioDesactivado(
+                usuarioId, usuario.getCorreoInstitucional(), usuario.getNombre()));
         return dto;
     }
 

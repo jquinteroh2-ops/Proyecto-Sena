@@ -10,15 +10,18 @@ import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.EstudianteRi
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.ItemAsistencia;
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.RegistrarAsistenciaRequest;
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.ReporteAsistenciaDto;
+import com.educktrack.asistencia.domain.evento.EventosDeAsistencia.AsistenciaBajoMinimo;
 import com.educktrack.auditoria.application.AuditoriaService;
 import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.shared.domain.ReglaNegocioException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,12 +39,14 @@ public class AsistenciaService {
     private final AsistenciaRepository asistenciaRepository;
     private final ContextoUsuario contexto;
     private final AuditoriaService auditoria;
+    private final ApplicationEventPublisher eventos;
 
     public AsistenciaService(AsistenciaRepository asistenciaRepository, ContextoUsuario contexto,
-                             AuditoriaService auditoria) {
+                             AuditoriaService auditoria, ApplicationEventPublisher eventos) {
         this.asistenciaRepository = asistenciaRepository;
         this.contexto = contexto;
         this.auditoria = auditoria;
+        this.eventos = eventos;
     }
 
     /**
@@ -53,6 +58,19 @@ public class AsistenciaService {
     @Transactional
     public List<AsistenciaDto> registrar(RegistrarAsistenciaRequest req) {
         contexto.exigirGestionMateria(req.cursoId(), req.materiaId());
+
+        // RF-30: solo una ausencia injustificada puede empujar el porcentaje
+        // por debajo del minimo; registrar PRESENTE o TARDE solo puede subirlo.
+        // Basta con medir a esos estudiantes antes y despues para detectar el
+        // cruce, en vez de a todo el curso.
+        Map<Long, Double> porcentajePrevio = porcentajesDe(
+                req.registros().stream()
+                        .filter(i -> i.estado() == EstadoAsistencia.AUSENTE)
+                        .map(ItemAsistencia::estudianteId)
+                        .distinct()
+                        .toList(),
+                req.materiaId(), req.periodoAcademicoId());
+
         List<AsistenciaJpaEntity> guardados = new ArrayList<>();
         LocalDateTime ahora = LocalDateTime.now();
         for (ItemAsistencia item : req.registros()) {
@@ -74,7 +92,42 @@ public class AsistenciaService {
             a.setFechaRegistro(ahora);
             guardados.add(asistenciaRepository.save(a));
         }
+
+        publicarCrucesDelMinimo(porcentajePrevio, req.materiaId(), req.periodoAcademicoId());
         return guardados.stream().map(AsistenciaService::toDto).toList();
+    }
+
+    /**
+     * RF-30 / RB-04: avisa solo de quien <strong>acaba de cruzar</strong> el
+     * minimo hacia abajo. Avisar en cada registro de quien ya estaba por debajo
+     * convertiria la alerta en ruido diario, y una alerta que se ignora no
+     * cumple su funcion.
+     */
+    private void publicarCrucesDelMinimo(Map<Long, Double> porcentajePrevio,
+                                         Long materiaId, Long periodoAcademicoId) {
+        if (porcentajePrevio.isEmpty()) {
+            return;
+        }
+        Map<Long, Double> ahora = porcentajesDe(
+                List.copyOf(porcentajePrevio.keySet()), materiaId, periodoAcademicoId);
+
+        porcentajePrevio.forEach((estudianteId, antes) -> {
+            double despues = ahora.getOrDefault(estudianteId, 100.0);
+            if (antes >= PORCENTAJE_MINIMO && despues < PORCENTAJE_MINIMO) {
+                eventos.publishEvent(new AsistenciaBajoMinimo(
+                        estudianteId, materiaId, periodoAcademicoId, despues));
+            }
+        });
+    }
+
+    private Map<Long, Double> porcentajesDe(List<Long> estudianteIds, Long materiaId, Long periodoAcademicoId) {
+        Map<Long, Double> porcentajes = new LinkedHashMap<>();
+        for (Long estudianteId : estudianteIds) {
+            porcentajes.put(estudianteId, calcularPorcentaje(
+                    asistenciaRepository.findByEstudianteIdAndMateriaIdAndPeriodoAcademicoId(
+                            estudianteId, materiaId, periodoAcademicoId)));
+        }
+        return porcentajes;
     }
 
     /** RF-27 / HU-15 / RS-07: justifica una inasistencia (no afecta el % minimo, RB-04). */

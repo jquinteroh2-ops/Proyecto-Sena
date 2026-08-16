@@ -19,7 +19,10 @@ import com.educktrack.notas.infrastructure.rest.NotaDtos.CalificacionDto;
 import com.educktrack.notas.infrastructure.rest.NotaDtos.DetalleTipoDto;
 import com.educktrack.notas.infrastructure.rest.NotaDtos.PromedioDto;
 import com.educktrack.notas.infrastructure.rest.NotaDtos.RegistrarCalificacionRequest;
+import com.educktrack.notas.domain.evento.EventosDeNotas.CorteCerrado;
+import com.educktrack.notas.domain.evento.EventosDeNotas.NotaBajaRegistrada;
 import com.educktrack.shared.domain.ReglaNegocioException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,19 +47,22 @@ public class CalificacionService {
     private final NovedadNotaRepository novedadRepository;
     private final ContextoUsuario contexto;
     private final AuditoriaService auditoria;
+    private final ApplicationEventPublisher eventos;
 
     public CalificacionService(CalificacionRepository calificacionRepository,
                                PonderacionRepository ponderacionRepository,
                                CierreCorteRepository cierreRepository,
                                NovedadNotaRepository novedadRepository,
                                ContextoUsuario contexto,
-                               AuditoriaService auditoria) {
+                               AuditoriaService auditoria,
+                               ApplicationEventPublisher eventos) {
         this.calificacionRepository = calificacionRepository;
         this.ponderacionRepository = ponderacionRepository;
         this.cierreRepository = cierreRepository;
         this.novedadRepository = novedadRepository;
         this.contexto = contexto;
         this.auditoria = auditoria;
+        this.eventos = eventos;
     }
 
     /**
@@ -87,6 +93,14 @@ public class CalificacionService {
                 "Nota " + guardada.getValor() + " (" + guardada.getTipo() + ") al estudiante "
                         + guardada.getEstudianteId() + " en la materia " + guardada.getMateriaId()
                         + ", curso " + guardada.getCursoId() + ".");
+
+        // RB-13: el umbral lo evalua este modulo, porque la regla es de
+        // calificaciones; quien escucha decide a quien avisa y con que texto.
+        if (guardada.getValor() < Calificacion.NOTA_APROBATORIA) {
+            eventos.publishEvent(new NotaBajaRegistrada(
+                    guardada.getEstudianteId(), guardada.getMateriaId(), guardada.getCursoId(),
+                    guardada.getPeriodoAcademicoId(), guardada.getValor()));
+        }
         return toDto(guardada);
     }
 
@@ -177,6 +191,10 @@ public class CalificacionService {
         auditoria.registrar(TipoOperacion.CORTE_CERRADO, "cierre_corte", c.getId(),
                 "Cierre del corte del curso " + cursoId + " en el periodo " + periodoAcademicoId
                         + ". A partir de aqui las notas solo se corrigen por novedad (RB-15).");
+
+        // RF-55 y RF-56: el cierre bloquea las notas para los docentes y a la
+        // vez habilita el boletin para estudiantes y acudientes (RB-19).
+        eventos.publishEvent(new CorteCerrado(cursoId, periodoAcademicoId));
     }
 
     /** RF-36 / RB-15: correccion auditada de una nota de un corte cerrado. */
