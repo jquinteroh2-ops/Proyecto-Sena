@@ -27,8 +27,8 @@ class BootstrapAdministradorTest {
     @Mock private GestionUsuarioService gestionUsuarioService;
 
     @Test
-    void creaElAdministradorCuandoLaBaseNoTieneNingunUsuario() {
-        when(usuarioRepository.count()).thenReturn(0L);
+    void creaElAdministradorCuandoEseCorreoNoExiste() {
+        when(usuarioRepository.existsByCorreoInstitucional("admin@colegio.edu.co")).thenReturn(false);
 
         bootstrap("admin@colegio.edu.co", "contrasena-larga").run(null);
 
@@ -40,12 +40,12 @@ class BootstrapAdministradorTest {
     }
 
     @Test
-    void noCreaNadaSiYaExistenCuentas() {
-        when(usuarioRepository.count()).thenReturn(5L);
+    void esIdempotenteSiLaCuentaYaExiste() {
+        when(usuarioRepository.existsByCorreoInstitucional("admin@colegio.edu.co")).thenReturn(true);
 
         bootstrap("admin@colegio.edu.co", "contrasena-larga").run(null);
 
-        // Nunca debe tocar un sistema en uso.
+        // No debe pisar la cuenta ni devolverle la contrasena de arranque.
         verify(gestionUsuarioService, never()).registrar(org.mockito.ArgumentMatchers.any());
     }
 
@@ -54,13 +54,13 @@ class BootstrapAdministradorTest {
         bootstrap("", "").run(null);
 
         // Ni siquiera consulta la base: sin configuracion no es asunto suyo.
-        verify(usuarioRepository, never()).count();
+        verify(usuarioRepository, never()).existsByCorreoInstitucional(org.mockito.ArgumentMatchers.any());
         verify(gestionUsuarioService, never()).registrar(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
     void unFalloAlCrearNoImpideQueLaAplicacionArranque() {
-        when(usuarioRepository.count()).thenReturn(0L);
+        when(usuarioRepository.existsByCorreoInstitucional("admin@colegio.edu.co")).thenReturn(false);
         when(gestionUsuarioService.registrar(org.mockito.ArgumentMatchers.any()))
                 .thenThrow(new IllegalStateException("correo duplicado"));
 

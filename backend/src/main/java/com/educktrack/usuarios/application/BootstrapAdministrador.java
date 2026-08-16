@@ -22,14 +22,19 @@ import java.util.List;
  *
  * <p>Tres condiciones lo mantienen acotado:</p>
  * <ul>
- *   <li>solo actua si la base <strong>no tiene ningun usuario</strong>, asi que
- *       nunca puede crear una cuenta en un sistema ya en uso ni reactivar un
- *       administrador que se haya desactivado a proposito;</li>
+ *   <li>solo crea la cuenta <strong>si ese correo no existe todavia</strong>, de
+ *       modo que es idempotente: no pisa una cuenta existente ni le devuelve la
+ *       contrasena de arranque a un administrador cuya clave ya se cambio;</li>
  *   <li>las credenciales llegan por configuracion, nunca desde el repositorio;</li>
  *   <li>la cuenta nace con la marca de cambio de contrasena obligatorio que
  *       aplica {@code Usuario.nueva}, de modo que la contrasena de arranque no
  *       sobrevive al primer acceso.</li>
  * </ul>
+ *
+ * <p>La condicion es el correo concreto y no "que no haya ningun usuario":
+ * ese guardian mas amplio parece mas seguro, pero deja el sistema sin salida en
+ * cuanto existe cualquier fila en la tabla sin que haya un administrador capaz
+ * de entrar, que es justo el atolladero que este arranque debe resolver.</p>
  *
  * <p>Sin configuracion no hace nada, que es lo que corresponde en desarrollo y
  * en los entornos donde las cuentas ya existen.</p>
@@ -63,8 +68,8 @@ public class BootstrapAdministrador implements ApplicationRunner {
         if (correo.isBlank() || password.isBlank()) {
             return;
         }
-        if (usuarioRepository.count() > 0) {
-            log.info("Bootstrap de administrador omitido: el sistema ya tiene cuentas registradas.");
+        if (usuarioRepository.existsByCorreoInstitucional(correo)) {
+            log.info("Bootstrap de administrador omitido: la cuenta {} ya existe.", correo);
             return;
         }
         try {
