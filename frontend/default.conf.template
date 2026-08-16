@@ -1,0 +1,34 @@
+# Nginx como proxy inverso delante del frontend (RS-01, RS-10).
+#
+# Plantilla: el entrypoint de la imagen oficial de nginx sustituye ${PORT} y
+# ${BACKEND_ORIGIN} al arrancar. Asi el mismo contenedor sirve para
+# docker-compose (donde el backend es el host 'backend' de la red y el puerto
+# es el 80) y para un PaaS como Railway, que inyecta el puerto por $PORT y
+# expone el backend en un dominio privado propio. NGINX_ENVSUBST_FILTER limita
+# la sustitucion a esas dos variables, de modo que las de nginx ($uri, $host,
+# $remote_addr...) llegan intactas al fichero final.
+server {
+    listen ${PORT};
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # SPA: cualquier ruta desconocida cae en index.html (React Router)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy de la API hacia el backend
+    location /api/ {
+        proxy_pass ${BACKEND_ORIGIN}/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Documentacion de la API accesible via el proxy (RS-09)
+    location /swagger-ui/ { proxy_pass ${BACKEND_ORIGIN}/swagger-ui/; }
+    location /v3/api-docs { proxy_pass ${BACKEND_ORIGIN}/v3/api-docs; }
+}

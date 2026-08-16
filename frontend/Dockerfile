@@ -14,6 +14,14 @@ RUN npm run build
 # --- Etapa 2: servir estaticos con Nginx ---
 FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY default.conf.template /etc/nginx/templates/default.conf.template
+
+# Valores por defecto para docker-compose; en Railway los sobreescriben las
+# variables del servicio (PORT lo inyecta la plataforma y BACKEND_ORIGIN
+# apunta al dominio privado del backend).
+ENV PORT=80
+ENV BACKEND_ORIGIN=http://backend:8080
+ENV NGINX_ENVSUBST_FILTER=^(PORT|BACKEND_ORIGIN)$
+
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
