@@ -208,6 +208,41 @@ railway up ./frontend --path-as-root --service educktrack-frontend --detach
   (id 1, `admin@educktrack.edu.co`) con credenciales que no coinciden con las
   fijadas; quedó **desactivada**, no borrada.
 
+### Correo saliente (Gmail)
+
+`spring.mail.*` quedo preparado para un SMTP real el 18/08/2026. **Fijar cuatro
+variables no basta**: con un servidor de verdad delante fallan dos cosas que no
+se ven contra un Mailpit local.
+
+- **Ningun punto de envio fijaba remitente.** JavaMail no envia sin `From`, y
+  Gmail ademas rechaza uno que no sea la cuenta autenticada o un alias suyo. Se
+  anadio `educktrack.correo.remitente`, que por defecto toma el propio usuario
+  SMTP.
+- **Faltaban las propiedades de la sesion SMTP.** En el puerto 587 Gmail exige
+  `mail.smtp.auth` y `starttls.enable`; quedan configurables porque un servidor
+  de pruebas local no admite ninguna de las dos y rechazaria la conexion.
+- Se anadieron **limites de tiempo**: el enlace de recuperacion se envia dentro
+  de la peticion HTTP, y sin timeout un servidor que no responde deja esperando a
+  quien pidio recuperar su contrasena por un fallo que no es suyo.
+
+Ya estan fijadas en Railway `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`,
+`MAIL_SMTP_AUTH=true` y `MAIL_SMTP_STARTTLS=true`. **Faltan las credenciales**,
+que las pone el responsable del proyecto:
+
+```bash
+railway variables --service educktrack-backend --set "MAIL_USERNAME=<cuenta>@gmail.com"
+railway variables --service educktrack-backend --set "MAIL_PASSWORD=<contrasena de aplicacion>"
+```
+
+**No sirve la contrasena normal de Gmail.** Hace falta una *contrasena de
+aplicacion* de 16 caracteres (`myaccount.google.com/apppasswords`), que exige
+tener la verificacion en dos pasos activada en la cuenta.
+
+**Limite a tener en cuenta:** una cuenta gratuita de Gmail admite del orden de
+500 correos al dia. Para avisos de un colegio completo (RF-42 y RF-55 salen por
+planificador diario a varios destinatarios) puede quedarse corto; si ocurre, el
+sustituto natural es un proveedor transaccional, y solo cambian estas variables.
+
 ### Credenciales
 
 El administrador inicial lo siembra `BootstrapAdministrador` a partir de
