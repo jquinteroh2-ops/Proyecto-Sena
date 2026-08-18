@@ -16,6 +16,16 @@ public interface TokenRecuperacionRepository extends JpaRepository<TokenRecupera
     Optional<TokenRecuperacionJpaEntity> findByTokenHash(String tokenHash);
 
     /**
+     * Enlaces emitidos para una cuenta desde un momento dado.
+     *
+     * <p>Sostiene el limite de peticiones: sin el, cualquiera puede pedir
+     * enlaces en bucle para un correo conocido y llenarle el buzon. No hace
+     * falta llevar la cuenta aparte, porque cada solicitud atendida ya deja su
+     * fila con la fecha.</p>
+     */
+    int countByUsuarioIdAndFechaSolicitudAfter(Long usuarioId, LocalDateTime desde);
+
+    /**
      * Invalida los enlaces sin usar de una cuenta marcandolos como consumidos.
      *
      * <p>Se hace al emitir uno nuevo, para que nunca haya dos enlaces vivos a la

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -38,31 +39,31 @@ public final class NotaDtos {
             @NotNull Long cursoId,
             @NotNull Long periodoAcademicoId,
             @NotNull(message = "El tipo de evaluacion es obligatorio") TipoEvaluacion tipo,
-            @NotNull(message = "El valor es obligatorio") Double valor,
+            @NotNull(message = "El valor es obligatorio") BigDecimal valor,
             String descripcion) {
     }
 
-    public record EditarCalificacionRequest(@NotNull Double valor) {
+    public record EditarCalificacionRequest(@NotNull BigDecimal valor) {
     }
 
     public record CalificacionDto(
             Long id, Long estudianteId, Long materiaId, Long cursoId, Long periodoAcademicoId,
-            TipoEvaluacion tipo, double valor, String descripcion) {
+            TipoEvaluacion tipo, BigDecimal valor, String descripcion) {
     }
 
     // ---------- Promedio (RF-33) ----------
-    public record DetalleTipoDto(TipoEvaluacion tipo, Double promedioTipo, int porcentaje, double aporte) {
+    public record DetalleTipoDto(TipoEvaluacion tipo, BigDecimal promedioTipo, int porcentaje, BigDecimal aporte) {
     }
 
     public record PromedioDto(
             Long estudianteId, Long materiaId, Long periodoAcademicoId,
-            double promedio, boolean aprobada,
+            BigDecimal promedio, boolean aprobada,
             List<TipoEvaluacion> pendientes, List<DetalleTipoDto> detalle) {
     }
 
     // ---------- Novedad (RF-36, RB-15) ----------
     public record NovedadRequest(
-            @NotNull(message = "El nuevo valor es obligatorio") Double nuevoValor,
+            @NotNull(message = "El nuevo valor es obligatorio") BigDecimal nuevoValor,
             @NotBlank(message = "El motivo es obligatorio") String motivo) {
     }
 
@@ -80,12 +81,12 @@ public final class NotaDtos {
      * minimo de asistencia sigue siendo aprobatoria, y quien lee el boletin
      * necesita ver las dos cosas para decidir.</p>
      */
-    public record BoletinMateriaDto(Long materiaId, double promedio, boolean aprobada,
+    public record BoletinMateriaDto(Long materiaId, BigDecimal promedio, boolean aprobada,
                                     boolean sinCalificar, boolean pierdeDerechoAEvaluacion) {
     }
 
     public record BoletinDto(
             Long estudianteId, Long cursoId, Long periodoAcademicoId,
-            List<BoletinMateriaDto> materias, double promedioGeneral, boolean aprobado) {
+            List<BoletinMateriaDto> materias, BigDecimal promedioGeneral, boolean aprobado) {
     }
 }

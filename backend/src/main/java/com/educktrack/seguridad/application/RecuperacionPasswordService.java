@@ -59,6 +59,8 @@ public class RecuperacionPasswordService {
     private final AuditoriaService auditoria;
     private final ApplicationEventPublisher eventos;
     private final int minutosValidez;
+    private final int maxSolicitudes;
+    private final int ventanaMinutos;
 
     public RecuperacionPasswordService(UsuarioRepository usuarioRepository,
                                        TokenRecuperacionRepository tokenRepository,
@@ -67,7 +69,11 @@ public class RecuperacionPasswordService {
                                        AuditoriaService auditoria,
                                        ApplicationEventPublisher eventos,
                                        @Value("${educktrack.seguridad.recuperacion.minutos-validez:30}")
-                                       int minutosValidez) {
+                                       int minutosValidez,
+                                       @Value("${educktrack.seguridad.recuperacion.max-solicitudes:3}")
+                                       int maxSolicitudes,
+                                       @Value("${educktrack.seguridad.recuperacion.ventana-minutos:15}")
+                                       int ventanaMinutos) {
         this.usuarioRepository = usuarioRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -75,6 +81,8 @@ public class RecuperacionPasswordService {
         this.auditoria = auditoria;
         this.eventos = eventos;
         this.minutosValidez = minutosValidez;
+        this.maxSolicitudes = maxSolicitudes;
+        this.ventanaMinutos = ventanaMinutos;
     }
 
     /**
@@ -99,6 +107,20 @@ public class RecuperacionPasswordService {
 
         UsuarioJpaEntity usuario = encontrado.get();
         LocalDateTime ahora = LocalDateTime.now();
+
+        // Sin limite, cualquiera puede pedir enlaces en bucle para un correo
+        // conocido y llenarle el buzon. Se corta en silencio, con la misma
+        // respuesta de siempre: contestar "demasiadas peticiones" confirmaria
+        // que ese correo tiene cuenta, que es justo lo que el endpoint evita.
+        int recientes = tokenRepository.countByUsuarioIdAndFechaSolicitudAfter(
+                usuario.getId(), ahora.minusMinutes(ventanaMinutos));
+        if (recientes >= maxSolicitudes) {
+            auditoria.registrarPeseARollback(TipoOperacion.RECUPERACION_FALLIDA,
+                    "Se supero el limite de " + maxSolicitudes + " solicitudes de recuperacion en "
+                            + ventanaMinutos + " minutos para la cuenta " + usuario.getId() + ".");
+            return;
+        }
+
         // Un enlace nuevo anula los anteriores: si no, un correo antiguo
         // reenviado o filtrado seguiria abriendo la cuenta.
         tokenRepository.invalidarPendientes(usuario.getId(), ahora);

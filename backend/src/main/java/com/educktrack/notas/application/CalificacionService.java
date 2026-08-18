@@ -30,6 +30,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -109,7 +111,7 @@ public class CalificacionService {
 
         // RB-13: el umbral lo evalua este modulo, porque la regla es de
         // calificaciones; quien escucha decide a quien avisa y con que texto.
-        if (guardada.getValor() < Calificacion.NOTA_APROBATORIA) {
+        if (!Calificacion.esAprobatoria(guardada.getValor())) {
             eventos.publishEvent(new NotaBajaRegistrada(
                     guardada.getEstudianteId(), guardada.getMateriaId(), guardada.getCursoId(),
                     guardada.getPeriodoAcademicoId(), guardada.getValor()));
@@ -119,14 +121,14 @@ public class CalificacionService {
 
     /** RF-32 / RB-15: edita una nota solo si el corte no esta cerrado. */
     @Transactional
-    public CalificacionDto editar(Long id, double nuevoValor) {
+    public CalificacionDto editar(Long id, BigDecimal nuevoValor) {
         CalificacionJpaEntity e = obtener(id);
         contexto.exigirGestionMateria(e.getCursoId(), e.getMateriaId()); // RNF-07
         if (cierreRepository.existsByCursoIdAndPeriodoAcademicoId(e.getCursoId(), e.getPeriodoAcademicoId())) {
             throw new ReglaNegocioException("RB-15",
                     "El corte esta cerrado; use una novedad de nota para corregir (RF-36).");
         }
-        double valorAnterior = e.getValor();
+        BigDecimal valorAnterior = e.getValor();
         e.setValor(new Calificacion(nuevoValor).getValor()); // RB-03
         CalificacionDto dto = toDto(calificacionRepository.save(e));
 
@@ -153,38 +155,59 @@ public class CalificacionService {
      */
     @Transactional(readOnly = true)
     public PromedioDto calcularPromedio(Long estudianteId, Long materiaId, Long periodoAcademicoId) {
-        List<CalificacionJpaEntity> notas = calificacionRepository
-                .findByEstudianteIdAndMateriaIdAndPeriodoAcademicoId(estudianteId, materiaId, periodoAcademicoId);
-        List<PonderacionEvaluacionJpaEntity> ponderaciones = ponderacionRepository
-                .findByMateriaIdAndPeriodoAcademicoId(materiaId, periodoAcademicoId);
+        ResultadoPromedio resultado = promedioDe(
+                calificacionRepository.findByEstudianteIdAndMateriaIdAndPeriodoAcademicoId(
+                        estudianteId, materiaId, periodoAcademicoId),
+                ponderacionRepository.findByMateriaIdAndPeriodoAcademicoId(materiaId, periodoAcademicoId));
+        return new PromedioDto(estudianteId, materiaId, periodoAcademicoId, resultado.promedio(),
+                Calificacion.esAprobatoria(resultado.promedio()),
+                resultado.pendientes(), resultado.detalle());
+    }
 
-        Map<TipoEvaluacion, Double> promedioPorTipo = notas.stream().collect(Collectors.groupingBy(
-                CalificacionJpaEntity::getTipo, Collectors.averagingDouble(CalificacionJpaEntity::getValor)));
+    /**
+     * RB-07: el calculo en si, sobre datos ya cargados y <strong>sin consultar
+     * nada</strong>.
+     *
+     * <p>Separarlo de {@link #calcularPromedio} es lo que permite al boletin
+     * resolver todas las materias del plan con las notas y ponderaciones que ya
+     * trajo, en vez de volver a la base por cada asignatura.</p>
+     */
+    private static ResultadoPromedio promedioDe(List<CalificacionJpaEntity> notas,
+                                                List<PonderacionEvaluacionJpaEntity> ponderaciones) {
+        Map<TipoEvaluacion, List<CalificacionJpaEntity>> porTipo = notas.stream()
+                .collect(Collectors.groupingBy(CalificacionJpaEntity::getTipo));
 
         List<DetalleTipoDto> detalle = new ArrayList<>();
         List<TipoEvaluacion> pendientes = new ArrayList<>();
-        double promedio = 0.0;
+        BigDecimal promedio = BigDecimal.ZERO;
 
         if (ponderaciones.isEmpty()) {
             // DECISION DE DISENO: sin ponderaciones configuradas se usa promedio simple.
-            promedio = notas.isEmpty() ? 0.0
-                    : notas.stream().mapToDouble(CalificacionJpaEntity::getValor).average().orElse(0.0);
+            promedio = media(notas);
         } else {
             for (PonderacionEvaluacionJpaEntity p : ponderaciones) {
-                Double avg = promedioPorTipo.get(p.getTipo());
-                if (avg == null) {
+                List<CalificacionJpaEntity> delTipo = porTipo.get(p.getTipo());
+                if (delTipo == null) {
                     pendientes.add(p.getTipo());
-                    detalle.add(new DetalleTipoDto(p.getTipo(), null, p.getPorcentaje(), 0.0));
+                    detalle.add(new DetalleTipoDto(p.getTipo(), null, p.getPorcentaje(), BigDecimal.ZERO));
                 } else {
-                    double aporte = avg * p.getPorcentaje() / 100.0;
-                    promedio += aporte;
-                    detalle.add(new DetalleTipoDto(p.getTipo(), redondear(avg), p.getPorcentaje(), redondear(aporte)));
+                    BigDecimal avg = media(delTipo);
+                    // El aporte se acumula sin redondear y solo se redondea el
+                    // total: redondear cada sumando desplazaria el promedio.
+                    BigDecimal aporte = avg.multiply(BigDecimal.valueOf(p.getPorcentaje()))
+                            .divide(CIEN, ESCALA_CALCULO, RoundingMode.HALF_UP);
+                    promedio = promedio.add(aporte);
+                    detalle.add(new DetalleTipoDto(p.getTipo(), redondear(avg), p.getPorcentaje(),
+                            redondear(aporte)));
                 }
             }
         }
-        promedio = redondear(promedio);
-        return new PromedioDto(estudianteId, materiaId, periodoAcademicoId, promedio,
-                promedio >= Calificacion.NOTA_APROBATORIA, pendientes, detalle);
+        return new ResultadoPromedio(redondear(promedio), pendientes, detalle);
+    }
+
+    /** Calculo del promedio sin los identificadores, que solo sirven para responder. */
+    private record ResultadoPromedio(BigDecimal promedio, List<TipoEvaluacion> pendientes,
+                                     List<DetalleTipoDto> detalle) {
     }
 
     /** RF-34 / RB-19: cierra el corte de un curso/periodo (bloquea modificaciones). */
@@ -212,14 +235,14 @@ public class CalificacionService {
 
     /** RF-36 / RB-15: correccion auditada de una nota de un corte cerrado. */
     @Transactional
-    public CalificacionDto registrarNovedad(Long calificacionId, double nuevoValor, String motivo) {
+    public CalificacionDto registrarNovedad(Long calificacionId, BigDecimal nuevoValor, String motivo) {
         CalificacionJpaEntity e = obtener(calificacionId);
         if (!cierreRepository.existsByCursoIdAndPeriodoAcademicoId(e.getCursoId(), e.getPeriodoAcademicoId())) {
             throw new ReglaNegocioException("RB-15",
                     "La novedad solo aplica a cortes cerrados; edite la nota directamente (RF-32).");
         }
-        double valorAnterior = e.getValor();
-        double valorNuevo = new Calificacion(nuevoValor).getValor(); // RB-03
+        BigDecimal valorAnterior = e.getValor();
+        BigDecimal valorNuevo = new Calificacion(nuevoValor).getValor(); // RB-03
 
         NovedadNotaJpaEntity n = new NovedadNotaJpaEntity();
         n.setCalificacionId(calificacionId);
@@ -265,23 +288,37 @@ public class CalificacionService {
         Map<Long, List<CalificacionJpaEntity>> porMateria = notas.stream()
                 .collect(Collectors.groupingBy(CalificacionJpaEntity::getMateriaId));
 
+        List<Long> materiasDelBoletin = materiasDelBoletin(cursoId, porMateria.keySet());
+
+        // Las tres consultas que necesita el boletin se hacen aqui, una vez cada
+        // una, en vez de una por materia. Con un plan de diez asignaturas eso
+        // pasaba de una treintena de consultas a tres.
+        Map<Long, List<PonderacionEvaluacionJpaEntity>> ponderacionesPorMateria =
+                materiasDelBoletin.isEmpty() ? Map.of()
+                        : ponderacionRepository
+                        .findByPeriodoAcademicoIdAndMateriaIdIn(periodoAcademicoId, materiasDelBoletin)
+                        .stream()
+                        .collect(Collectors.groupingBy(PonderacionEvaluacionJpaEntity::getMateriaId));
+        Set<Long> sinDerechoAEvaluacion =
+                asistencia.materiasSinDerechoAEvaluacion(estudianteId, periodoAcademicoId);
+
         List<BoletinMateriaDto> materias = new ArrayList<>();
-        for (Long materiaId : materiasDelBoletin(cursoId, porMateria.keySet())) {
+        for (Long materiaId : materiasDelBoletin) {
             boolean sinCalificar = !porMateria.containsKey(materiaId);
             // El acceso ya quedo autorizado al entrar al boletin (RNF-07).
-            double prom = sinCalificar ? 0.0
-                    : calcularPromedio(estudianteId, materiaId, periodoAcademicoId).promedio();
+            BigDecimal prom = sinCalificar ? Calificacion.normalizar(BigDecimal.ZERO)
+                    : promedioDe(porMateria.get(materiaId),
+                    ponderacionesPorMateria.getOrDefault(materiaId, List.of())).promedio();
             // RB-04: el boletin informa de la perdida del derecho a evaluacion
             // ordinaria, pero no la convierte en reprobacion. Son reglas
             // distintas y mezclarlas haria imposible distinguir a quien perdio
             // la materia de quien perdio la asistencia.
-            boolean pierdeDerecho = !asistencia.conservaDerechoAEvaluacion(
-                    estudianteId, materiaId, periodoAcademicoId);
             materias.add(new BoletinMateriaDto(materiaId, prom,
-                    !sinCalificar && prom >= Calificacion.NOTA_APROBATORIA, sinCalificar, pierdeDerecho));
+                    !sinCalificar && Calificacion.esAprobatoria(prom), sinCalificar,
+                    sinDerechoAEvaluacion.contains(materiaId)));
         }
-        double promedioGeneral = redondear(materias.stream()
-                .mapToDouble(BoletinMateriaDto::promedio).average().orElse(0.0));
+        BigDecimal promedioGeneral = redondear(mediaDe(
+                materias.stream().map(BoletinMateriaDto::promedio).toList()));
         // RB-12: aprueba si todas las materias son aprobatorias.
         boolean aprobado = !materias.isEmpty() && materias.stream().allMatch(BoletinMateriaDto::aprobada);
         return new BoletinDto(estudianteId, cursoId, periodoAcademicoId, materias, promedioGeneral, aprobado);
@@ -328,8 +365,26 @@ public class CalificacionService {
         return auth != null ? auth.getName() : "sistema";
     }
 
-    private static double redondear(double v) {
-        return Math.round(v * 100.0) / 100.0;
+    /** Escala intermedia del calculo, mas fina que la de presentacion. */
+    private static final int ESCALA_CALCULO = 6;
+    private static final BigDecimal CIEN = new BigDecimal("100");
+
+    /** Lleva un valor a los dos decimales con que se presentan las notas (RB-03). */
+    private static BigDecimal redondear(BigDecimal v) {
+        return v.setScale(Calificacion.ESCALA, RoundingMode.HALF_UP);
+    }
+
+    /** Media aritmetica de un conjunto de notas, sin redondear todavia. */
+    private static BigDecimal media(List<CalificacionJpaEntity> notas) {
+        return mediaDe(notas.stream().map(CalificacionJpaEntity::getValor).toList());
+    }
+
+    private static BigDecimal mediaDe(List<BigDecimal> valores) {
+        if (valores.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        return valores.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(valores.size()), ESCALA_CALCULO, RoundingMode.HALF_UP);
     }
 
     private static CalificacionDto toDto(CalificacionJpaEntity e) {

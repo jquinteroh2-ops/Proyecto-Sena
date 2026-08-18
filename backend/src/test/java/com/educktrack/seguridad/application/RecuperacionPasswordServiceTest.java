@@ -50,6 +50,8 @@ import static org.mockito.Mockito.when;
 class RecuperacionPasswordServiceTest {
 
     private static final int MINUTOS = 30;
+    private static final int MAX_SOLICITUDES = 3;
+    private static final int VENTANA = 15;
     private static final Long USUARIO_ID = 42L;
     private static final String CORREO = "docente@colegio.edu.co";
     private static final String PASSWORD_NUEVA = "nuevaClave123";
@@ -67,7 +69,7 @@ class RecuperacionPasswordServiceTest {
     void prepararServicio() {
         // Los minutos de validez son un @Value, no un colaborador.
         service = new RecuperacionPasswordService(usuarioRepository, tokenRepository,
-                passwordEncoder, envio, auditoria, eventos, MINUTOS);
+                passwordEncoder, envio, auditoria, eventos, MINUTOS, MAX_SOLICITUDES, VENTANA);
     }
 
     // ---------- solicitar ----------
@@ -134,6 +136,32 @@ class RecuperacionPasswordServiceTest {
         service.solicitar(CORREO);
 
         verify(tokenRepository).invalidarPendientes(eq(USUARIO_ID), any(LocalDateTime.class));
+    }
+
+    @Test
+    void dejaDeEmitirEnlacesAlSuperarElLimiteDeSolicitudes() {
+        // Y lo hace en silencio: contestar "demasiadas peticiones" confirmaria
+        // que ese correo tiene cuenta, que es justo lo que el endpoint evita.
+        when(usuarioRepository.findByCorreoInstitucional(CORREO)).thenReturn(Optional.of(usuario()));
+        when(tokenRepository.countByUsuarioIdAndFechaSolicitudAfter(eq(USUARIO_ID), any(LocalDateTime.class)))
+                .thenReturn(MAX_SOLICITUDES);
+
+        service.solicitar(CORREO);
+
+        verify(tokenRepository, never()).save(any());
+        verify(envio, never()).enviar(anyString(), anyString(), anyInt());
+        verify(auditoria).registrarPeseARollback(eq(TipoOperacion.RECUPERACION_FALLIDA), anyString());
+    }
+
+    @Test
+    void sigueEmitiendoMientrasNoSeAlcanceElLimite() {
+        when(usuarioRepository.findByCorreoInstitucional(CORREO)).thenReturn(Optional.of(usuario()));
+        when(tokenRepository.countByUsuarioIdAndFechaSolicitudAfter(eq(USUARIO_ID), any(LocalDateTime.class)))
+                .thenReturn(MAX_SOLICITUDES - 1);
+
+        service.solicitar(CORREO);
+
+        verify(tokenRepository).save(any());
     }
 
     // ---------- restablecer ----------

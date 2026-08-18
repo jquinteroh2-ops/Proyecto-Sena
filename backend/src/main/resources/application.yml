@@ -69,6 +69,10 @@ educktrack:
       minutos-validez: ${EDUCKTRACK_RECUPERACION_MINUTOS:30}
       # Pantalla del frontend que recibe el token y pide la nueva contrasena.
       url-base: ${EDUCKTRACK_RECUPERACION_URL:http://localhost:5173/restablecer-password}
+      # Limite de solicitudes por cuenta y ventana: sin el, cualquiera puede
+      # pedir enlaces en bucle para un correo conocido y llenarle el buzon.
+      max-solicitudes: ${EDUCKTRACK_RECUPERACION_MAX:3}
+      ventana-minutos: ${EDUCKTRACK_RECUPERACION_VENTANA:15}
   security:
     jwt:
       # DECISION DE DISENO: secreto por defecto solo para dev. En docker/prod

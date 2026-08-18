@@ -1,5 +1,6 @@
 package com.educktrack.reportes.infrastructure.rest;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -12,7 +13,7 @@ public final class ReporteDtos {
 
     /** RF-51: panel de indicadores institucionales. */
     public record PanelIndicadoresDto(
-            double promedioGeneralInstitucional,
+            BigDecimal promedioGeneralInstitucional,
             double asistenciaPromedioInstitucional,
             long estudiantesEnRiesgo,
             long totalEstudiantesConNotas) {
@@ -20,12 +21,12 @@ public final class ReporteDtos {
 
     /** RF-47: fila de rendimiento de un estudiante en un curso. */
     public record RendimientoEstudianteDto(
-            Long estudianteId, String nombreCompleto, double promedioGeneral, boolean aprobado) {
+            Long estudianteId, String nombreCompleto, BigDecimal promedioGeneral, boolean aprobado) {
     }
 
     public record RendimientoCursoDto(
             Long cursoId, Long periodoAcademicoId,
-            List<RendimientoEstudianteDto> estudiantes, double promedioCurso) {
+            List<RendimientoEstudianteDto> estudiantes, BigDecimal promedioCurso) {
     }
 
     /** RF-48: asistencia institucional consolidada. */

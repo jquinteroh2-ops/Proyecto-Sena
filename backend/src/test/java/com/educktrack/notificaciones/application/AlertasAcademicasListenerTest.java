@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -42,7 +43,7 @@ class AlertasAcademicasListenerTest {
     void elBajoRendimientoLlegaAlEstudianteYASusAcudientes() {
         when(destinatarios.delEstudianteYSusAcudientes(10L)).thenReturn(Set.of(100L, 200L));
 
-        listener.alRegistrarUnaNotaBaja(new NotaBajaRegistrada(10L, 7L, 1L, 1L, 2.5));
+        listener.alRegistrarUnaNotaBaja(new NotaBajaRegistrada(10L, 7L, 1L, 1L, new BigDecimal("2.5")));
 
         // RB-13: lo que le pasa a un menor le importa a quien responde por el.
         verify(notificaciones).notificar(eq(100L), anyString(), anyString(),
@@ -105,7 +106,7 @@ class AlertasAcademicasListenerTest {
         // matriculado antes de que le creen cuenta.
         when(destinatarios.delEstudianteYSusAcudientes(10L)).thenReturn(Set.of());
 
-        listener.alRegistrarUnaNotaBaja(new NotaBajaRegistrada(10L, 7L, 1L, 1L, 2.0));
+        listener.alRegistrarUnaNotaBaja(new NotaBajaRegistrada(10L, 7L, 1L, 1L, new BigDecimal("2.0")));
 
         verify(notificaciones, never()).notificar(any(), anyString(), anyString(), any());
     }
@@ -117,7 +118,7 @@ class AlertasAcademicasListenerTest {
                 .thenThrow(new IllegalStateException("canal caido"));
 
         assertDoesNotThrow(() -> listener.alRegistrarUnaNotaBaja(
-                new NotaBajaRegistrada(10L, 7L, 1L, 1L, 2.0)));
+                new NotaBajaRegistrada(10L, 7L, 1L, 1L, new BigDecimal("2.0"))));
 
         // El segundo destinatario recibe el aviso pese al fallo del primero.
         verify(notificaciones, times(2)).notificar(any(), anyString(), anyString(), any());
