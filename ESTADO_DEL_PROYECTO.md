@@ -57,7 +57,7 @@ ya funciona.
 | Rama de trabajo | `main` (las 10 fases integradas el 18/08/2026) |
 | Pruebas | **147 en verde** |
 | Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones), 6 (Reglas académicas), 7 (Recuperación de contraseña), 8 (Rendimiento), 9 (Configuración institucional y limpieza) y 10 (Preparación frontend) |
-| Desplegado | Hasta la Fase 5. **Las fases 6 a 10 no se han desplegado: V12 a V15 no se han aplicado al MySQL real.** |
+| Desplegado | **Al dia (18/08/2026): las 10 fases en Railway, V1–V16 aplicadas.** |
 
 ### Fase 1 — Identidad (cerrada)
 
@@ -863,6 +863,45 @@ que las pantallas funcionan pero nadie recibe el enlace.
 
 ---
 
+## 6-nonies. Incidente del despliegue del 18/08/2026 (V16)
+
+Merece su propia seccion porque es la mejor prueba de una deuda que el documento
+venia anotando desde la Fase 2.
+
+**Que paso.** Al desplegar las fases 6 a 10, las cuatro migraciones (V12–V15)
+aplicaron sin problema y **el backend no arranco**:
+
+```
+Schema-validation: wrong column type encountered in column [token_hash]
+in table [token_recuperacion]; found [char], but expecting [varchar(64)]
+```
+
+V13 declaro `token_hash` como `CHAR(64)`, que es lo natural para un SHA-256 en
+hexadecimal —siempre mide 64 caracteres—, pero la entidad lo mapea con
+`@Column(length = 64)`, que Hibernate traduce a `VARCHAR`. Con
+`ddl-auto: validate`, eso aborta el arranque.
+
+**Por que ninguna prueba lo vio.** Las pruebas usan H2 con `create-drop` y Flyway
+**desactivado**: el esquema se genera *a partir de* las entidades, de modo que
+por construccion siempre coincide. Las 147 pruebas en verde no podian detectarlo,
+y no porque falten pruebas de logica, sino porque **nadie ejecuta las migraciones
+antes de desplegar**. Es exactamente el fallo que Testcontainers evitaria
+(seccion 4).
+
+**Como se corrigio.** V16 alinea la base con la entidad
+(`MODIFY COLUMN token_hash VARCHAR(64)`). Se cambio la base y no la entidad
+porque `columnDefinition = "char(64)"` meteria sintaxis del motor en el modelo y
+las pruebas generan el esquema con H2. Y se hizo en una migracion nueva, no
+corrigiendo V13, porque V13 ya se habia aplicado: editarla rompe la suma de
+verificacion de Flyway.
+
+**La leccion, para la proxima migracion:** un `CREATE TABLE` cuyo tipo no sea el
+que Hibernate deduce de la entidad no falla al migrar, falla **al arrancar
+despues**, con las migraciones ya aplicadas y el servicio caido. Antes de
+desplegar una migracion nueva, contrastar cada columna con su `@Column`.
+
+---
+
 ## 7. Fases restantes
 
 **No queda ninguna fase del plan.** Lo que sigue abierto, por orden de
@@ -871,8 +910,7 @@ importancia:
 | Pendiente | Dónde está descrito |
 |---|---|
 | **Sin SMTP, RF-64 no funciona**: las pantallas están, pero el correo no sale | 6-quinquies |
-| **`EDUCKTRACK_RECUPERACION_URL` sin fijar en Railway** (apunta a localhost) | 6-octies |
-| **V12 a V15 sin aplicar al MySQL real**; nadie ejecuta las migraciones en CI | sección 4 |
+| **Nadie ejecuta las migraciones antes de desplegar** (causo el incidente de V16) | 6-nonies |
 | **Testcontainers**: bloqueado desde la Fase 2 por no haber Docker en la máquina | sección 4 |
 | **El frontend no tiene ninguna prueba automatizada** | 6-octies |
 | **El planificador no soporta varias instancias** (alertas duplicadas) | 6-ter |
