@@ -187,6 +187,28 @@ public class AsistenciaService {
         return enRiesgo;
     }
 
+    /**
+     * RB-04: indica si el estudiante conserva el derecho a evaluacion ordinaria
+     * en una materia, <strong>sin control de acceso</strong>.
+     *
+     * <p>Mismo patron que {@code CalificacionService.calcularPromedio}: solo
+     * debe invocarse desde un metodo que ya haya autorizado al solicitante sobre
+     * ese estudiante. Existe para que el boletin (RF-35) pueda decir si la
+     * materia perdio el derecho sin duplicar la formula del porcentaje, que es
+     * lo unico que define RB-04 y debe vivir en un solo sitio.</p>
+     *
+     * <p>Es una consulta, no un bloqueo: el sistema informa de la perdida y no
+     * impide registrar la nota. Una justificacion que llega tarde (RF-27)
+     * recalcula el porcentaje hacia arriba, de modo que bloquear el registro
+     * convertiria un dato reversible en una puerta cerrada.</p>
+     */
+    @Transactional(readOnly = true)
+    public boolean conservaDerechoAEvaluacion(Long estudianteId, Long materiaId, Long periodoAcademicoId) {
+        return calcularPorcentaje(asistenciaRepository
+                .findByEstudianteIdAndMateriaIdAndPeriodoAcademicoId(estudianteId, materiaId, periodoAcademicoId))
+                >= PORCENTAJE_MINIMO;
+    }
+
     private ReporteAsistenciaDto construirReporte(Long estudianteId, Long materiaId, Long periodoId,
                                                   List<AsistenciaJpaEntity> registros) {
         long total = registros.size();

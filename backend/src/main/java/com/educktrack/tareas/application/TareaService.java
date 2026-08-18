@@ -1,6 +1,7 @@
 package com.educktrack.tareas.application;
 
 import com.educktrack.identidad.application.ContextoUsuario;
+import com.educktrack.notas.domain.Calificacion;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import com.educktrack.tareas.domain.EstadoEntrega;
 import com.educktrack.tareas.domain.Tarea;
@@ -107,10 +108,10 @@ public class TareaService {
                 .orElseThrow(() -> new ReglaNegocioException("RF-40", "La entrega no existe."));
         TareaJpaEntity tarea = obtenerTarea(entrega.getTareaId());
         contexto.exigirGestionMateria(tarea.getCursoId(), tarea.getMateriaId());
-        if (req.calificacion() < 1.0 || req.calificacion() > 5.0) {
-            throw new ReglaNegocioException("RB-03", "La calificacion debe estar entre 1.0 y 5.0.");
-        }
-        entrega.setCalificacion(req.calificacion());
+        // RB-03: la escala institucional vive en el dominio de notas. Repetir
+        // aqui los limites 1.0-5.0 significaba que cambiarla dejaba este punto
+        // de entrada con la escala vieja.
+        entrega.setCalificacion(new Calificacion(req.calificacion()).getValor());
         entrega.setRetroalimentacion(req.retroalimentacion());
         return toEntregaDto(entregaRepository.save(entrega));
     }

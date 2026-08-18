@@ -59,7 +59,10 @@ public class MatriculaService {
             throw new ReglaNegocioException("RF-09", "Solo se pueden matricular estudiantes activos.");
         }
 
-        CursoJpaEntity cursoEntity = cursoRepository.findById(req.cursoId())
+        // RB-17: se toma el curso con la fila bloqueada, de modo que el recuento
+        // de matriculados de mas abajo no pueda quedar obsoleto entre que se
+        // comprueba el cupo y se inserta la matricula.
+        CursoJpaEntity cursoEntity = cursoRepository.findByIdParaMatricular(req.cursoId())
                 .orElseThrow(() -> new ReglaNegocioException("RF-09", "El curso no existe."));
         if (!periodoRepository.existsById(req.periodoAcademicoId())) {
             throw new ReglaNegocioException("RF-09", "El periodo academico no existe.");
@@ -85,7 +88,11 @@ public class MatriculaService {
         matricula.setEstado(EstadoMatriculaCurso.ACTIVA);
         MatriculaJpaEntity guardada = matriculaRepository.save(matricula);
 
-        // RB-11: el estudiante queda inscrito en todas las materias del plan del curso.
+        // RB-11: la inscripcion en las materias del plan es *derivada*, no una
+        // tabla aparte: estar matriculado en el curso ya significa cursar su
+        // plan, y duplicarlo en filas propias abriria la posibilidad de que las
+        // dos versiones discrepen. Aqui solo se informa cuantas son; quien
+        // consume la regla es el boletin (RB-12), que lista el plan completo.
         int materiasInscritas = planEstudiosRepository.findByCursoId(req.cursoId()).size();
 
         // RS-07: la matricula cambia la situacion academica del estudiante y es
