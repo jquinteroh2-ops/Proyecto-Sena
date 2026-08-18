@@ -34,11 +34,32 @@ spring:
     locations: classpath:db/migration
 
   mail:
-    # Configuracion de correo para notificaciones (RS-08). Valores reales por entorno.
+    # Configuracion de correo para notificaciones (RS-08) y para el enlace de
+    # recuperacion (RF-64). Valores reales por entorno.
+    #
+    # Los valores por defecto apuntan a un servidor local de pruebas
+    # (MailHog/Mailpit en el 1025), que no pide ni credenciales ni cifrado. En
+    # produccion se inyectan MAIL_HOST/PORT/USERNAME/PASSWORD.
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          # Gmail y la mayoria de proveedores exigen autenticacion y STARTTLS en
+          # el puerto 587. Se dejan configurables porque un servidor de pruebas
+          # local no admite ninguna de las dos cosas y rechazaria la conexion.
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
+          # Sin limite de tiempo, un servidor de correo que no responde bloquea
+          # el hilo que atiende la peticion: quien pide recuperar su contrasena
+          # se queda esperando por un fallo que no es suyo.
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
 
 server:
   # Railway/Heroku inyectan el puerto via PORT; localmente cae a 8080.
@@ -48,6 +69,11 @@ server:
 
 # --- Parametros de aplicacion propios de EduckTrack ---
 educktrack:
+  correo:
+    # Remitente de los correos que envia el sistema. JavaMail falla si no hay
+    # ninguno, y Gmail exige que coincida con la cuenta autenticada, de modo que
+    # por defecto se usa el propio usuario SMTP.
+    remitente: ${MAIL_FROM:${MAIL_USERNAME:no-reply@educktrack.edu.co}}
   # NOTA: la escala de calificacion (RB-03), el porcentaje minimo de asistencia
   # (RB-04) y el maximo de horas por docente (RB-09) ya NO se configuran aqui.
   # Desde la Fase 9 son datos que fija el Rector (RF-59) y viven en la tabla

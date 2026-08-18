@@ -13,6 +13,7 @@ import com.educktrack.shared.domain.ReglaNegocioException;
 import com.educktrack.usuarios.infrastructure.persistence.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -39,17 +40,21 @@ public class NotificacionService {
     private final UsuarioRepository usuarioRepository;
     private final JavaMailSender mailSender;
     private final ContextoUsuario contexto;
+    private final String remitente;
 
     public NotificacionService(NotificacionRepository notificacionRepository,
                                ConfiguracionNotificacionRepository configRepository,
                                UsuarioRepository usuarioRepository,
                                JavaMailSender mailSender,
-                               ContextoUsuario contexto) {
+                               ContextoUsuario contexto,
+                               @Value("${educktrack.correo.remitente:no-reply@educktrack.edu.co}")
+                               String remitente) {
         this.notificacionRepository = notificacionRepository;
         this.configRepository = configRepository;
         this.usuarioRepository = usuarioRepository;
         this.mailSender = mailSender;
         this.contexto = contexto;
+        this.remitente = remitente;
     }
 
     /** RF-52 / HU-28: configura el canal institucional. */
@@ -140,6 +145,9 @@ public class NotificacionService {
                 return;
             }
             SimpleMailMessage msg = new SimpleMailMessage();
+            // Mismo motivo que en el enlace de recuperacion: sin remitente
+            // JavaMail no envia, y Gmail rechaza un From que no sea su cuenta.
+            msg.setFrom(remitente);
             msg.setTo(correo);
             msg.setSubject(titulo);
             msg.setText(mensaje);
