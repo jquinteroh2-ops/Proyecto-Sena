@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -43,8 +44,8 @@ public class EntregaTareaJpaEntity {
     @Column(name = "fecha_entrega", nullable = false)
     private LocalDateTime fechaEntrega;
 
-    @Column(name = "calificacion")
-    private Double calificacion;
+    @Column(name = "calificacion", precision = 3, scale = 2)
+    private BigDecimal calificacion;
 
     @Column(name = "retroalimentacion", length = 1000)
     private String retroalimentacion;

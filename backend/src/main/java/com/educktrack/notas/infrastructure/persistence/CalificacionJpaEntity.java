@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -45,8 +46,8 @@ public class CalificacionJpaEntity {
     @Column(name = "tipo", length = 20, nullable = false)
     private TipoEvaluacion tipo;
 
-    @Column(name = "valor", nullable = false)
-    private double valor;
+    @Column(name = "valor", nullable = false, precision = 3, scale = 2)
+    private BigDecimal valor;
 
     @Column(name = "descripcion", length = 200)
     private String descripcion;

@@ -1,5 +1,7 @@
 package com.educktrack.notas.domain.evento;
 
+import java.math.BigDecimal;
+
 /**
  * Hechos del modulo de calificaciones que otros modulos pueden querer atender
  * (RS-08).
@@ -27,7 +29,7 @@ public final class EventosDeNotas {
             Long materiaId,
             Long cursoId,
             Long periodoAcademicoId,
-            double valor) {
+            BigDecimal valor) {
     }
 
     /**

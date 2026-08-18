@@ -4,6 +4,7 @@ import com.educktrack.tareas.domain.EstadoEntrega;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -40,13 +41,13 @@ public final class TareaDtos {
 
     /** RF-40: calificar tarea. */
     public record CalificarTareaRequest(
-            @NotNull(message = "La calificacion es obligatoria") Double calificacion,
+            @NotNull(message = "La calificacion es obligatoria") BigDecimal calificacion,
             String retroalimentacion) {
     }
 
     public record EntregaDto(
             Long id, Long tareaId, Long estudianteId, String evidencia,
-            LocalDateTime fechaEntrega, Double calificacion, String retroalimentacion) {
+            LocalDateTime fechaEntrega, BigDecimal calificacion, String retroalimentacion) {
     }
 
     /** RF-41: estado de una tarea para un estudiante. */

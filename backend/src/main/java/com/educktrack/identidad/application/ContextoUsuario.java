@@ -107,11 +107,19 @@ public class ContextoUsuario {
         return auth.getName();
     }
 
-    /** Cuenta del usuario autenticado. */
+    /**
+     * Cuenta del usuario autenticado.
+     *
+     * <p>Se memoriza durante la peticion ({@link IdentidadDeLaPeticion}): una
+     * sola comprobacion de acceso la consultaba hasta cuatro veces, y dentro de
+     * una peticion la respuesta no puede cambiar.</p>
+     */
     public UsuarioJpaEntity usuarioActual() {
-        return usuarioRepository.findByCorreoInstitucional(correoActual())
-                .orElseThrow(() -> new AccessDeniedException(
-                        "La cuenta asociada a la sesion ya no existe en el sistema."));
+        String correo = correoActual();
+        return IdentidadDeLaPeticion.usuario(correo,
+                () -> usuarioRepository.findByCorreoInstitucional(correo)
+                        .orElseThrow(() -> new AccessDeniedException(
+                                "La cuenta asociada a la sesion ya no existe en el sistema.")));
     }
 
     public Long usuarioIdActual() {
@@ -133,16 +141,24 @@ public class ContextoUsuario {
     // Perfiles asociados (V9)
     // ---------------------------------------------------------------------
 
-    /** Estudiante asociado a la cuenta, si la cuenta es de un estudiante. */
+    /**
+     * Estudiante asociado a la cuenta, si la cuenta es de un estudiante.
+     *
+     * <p>Memorizado por peticion: {@code puedeVerEstudiante},
+     * {@code puedeVerCurso} y {@code resolverEstudianteId} lo piden por
+     * separado en la misma llamada.</p>
+     */
     public Optional<Long> estudianteIdActual() {
-        return estudianteRepository.findByUsuarioId(usuarioIdActual())
-                .map(EstudianteJpaEntity::getId);
+        return IdentidadDeLaPeticion.estudianteId(correoActual(),
+                () -> estudianteRepository.findByUsuarioId(usuarioIdActual())
+                        .map(EstudianteJpaEntity::getId));
     }
 
     /** Docente asociado a la cuenta, si la cuenta es de un docente. */
     public Optional<Long> docenteIdActual() {
-        return docenteRepository.findByUsuarioId(usuarioIdActual())
-                .map(DocenteJpaEntity::getId);
+        return IdentidadDeLaPeticion.docenteId(correoActual(),
+                () -> docenteRepository.findByUsuarioId(usuarioIdActual())
+                        .map(DocenteJpaEntity::getId));
     }
 
     /** RB-08: estudiantes formalmente vinculados a la cuenta del acudiente. */
@@ -203,9 +219,8 @@ public class ContextoUsuario {
             return true;
         }
         Long usuarioId = usuarioIdActual();
-        boolean esElMismo = estudianteRepository.findByUsuarioId(usuarioId)
-                .map(e -> estudianteId.equals(e.getId()))
-                .orElse(false);
+        // Reutiliza el perfil ya memorizado en vez de volver a consultarlo.
+        boolean esElMismo = estudianteIdActual().map(estudianteId::equals).orElse(false);
         if (esElMismo || vinculoRepository.existsByUsuarioIdAndEstudianteId(usuarioId, estudianteId)) {
             return true;
         }

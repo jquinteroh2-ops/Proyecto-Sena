@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -30,11 +31,11 @@ public class NovedadNotaJpaEntity {
     @Column(name = "calificacion_id", nullable = false)
     private Long calificacionId;
 
-    @Column(name = "valor_anterior", nullable = false)
-    private double valorAnterior;
+    @Column(name = "valor_anterior", nullable = false, precision = 3, scale = 2)
+    private BigDecimal valorAnterior;
 
-    @Column(name = "valor_nuevo", nullable = false)
-    private double valorNuevo;
+    @Column(name = "valor_nuevo", nullable = false, precision = 3, scale = 2)
+    private BigDecimal valorNuevo;
 
     @Column(name = "motivo", length = 300, nullable = false)
     private String motivo;

@@ -60,6 +60,12 @@ class ContextoUsuarioTest {
     @AfterEach
     void limpiarContextoDeSeguridad() {
         SecurityContextHolder.clearContext();
+        // Lo que en produccion hace LimpiezaIdentidadFilter al terminar cada
+        // peticion. Sin esto, la identidad memorizada por una prueba se la
+        // encuentra la siguiente: todas usan el mismo correo, de modo que la
+        // comprobacion por correo no la detendria. Es el mismo fallo de
+        // aislamiento que el filtro evita entre peticiones que comparten hilo.
+        IdentidadDeLaPeticion.limpiar();
     }
 
     // ---------------------------------------------------------------------

@@ -10,7 +10,7 @@
 
 ## 1. Cómo continuar
 
-**La siguiente fase pendiente es la 8 (Rendimiento).** Las fases 1 a 7 están
+**La siguiente fase pendiente es la 9 (Limpieza).** Las fases 1 a 8 están
 cerradas. Lo que quedó deliberadamente fuera está anotado al final de cada
 sección de fase.
 
@@ -54,10 +54,10 @@ ya funciona.
 
 | | Estado |
 |---|---|
-| Rama de trabajo | `main` (fases 1–7 integradas el 18/08/2026) |
-| Pruebas | **123 en verde** |
-| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones), 6 (Reglas académicas) y 7 (Recuperación de contraseña) |
-| Desplegado | Hasta la Fase 5. **Las fases 6 y 7 no se han desplegado: V12 y V13 no se han aplicado al MySQL real.** |
+| Rama de trabajo | `main` (fases 1–8 integradas el 18/08/2026) |
+| Pruebas | **133 en verde** |
+| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones), 6 (Reglas académicas), 7 (Recuperación de contraseña) y 8 (Rendimiento) |
+| Desplegado | Hasta la Fase 5. **Las fases 6 a 8 no se han desplegado: V12, V13 y V14 no se han aplicado al MySQL real.** |
 
 ### Fase 1 — Identidad (cerrada)
 
@@ -120,7 +120,7 @@ comprobación una vez por nota. Si añades un cálculo masivo, sigue ese patrón
 
 ## 4. Pruebas
 
-123 en verde. Piezas que conviene entender antes de tocarlas:
+133 en verde. Piezas que conviene entender antes de tocarlas:
 
 - **`ContextoUsuarioTest`** (20) — la *lógica* de la decisión de acceso, con
   dobles de prueba (Mockito).
@@ -140,7 +140,10 @@ comprobación una vez por nota. Si añades un cálculo masivo, sigue ese patrón
   demuestra la exclusión mutua (haría falta concurrencia real contra MySQL), pero
   sí que la consulta existe y es JPQL válido, que es donde está el riesgo
   práctico: un fallo ahí solo aparecería al matricular.
-- **`RecuperacionPasswordServiceTest`** (10) — las propiedades de seguridad de
+- **`IdentidadDeLaPeticionTest`** (4) — la memorizacion de identidad de la Fase
+  8, y sobre todo que **ninguna identidad sobreviva a la limpieza**: es la red
+  que protege el aislamiento entre peticiones que comparten hilo.
+- **`RecuperacionPasswordServiceTest`** (12) — las propiedades de seguridad de
   HU-04: que solicitar no revele si la cuenta existe, que en base de datos quede
   el hash y no el token, que el enlace se consuma una sola vez y que una
   contraseña rechazada **no** lo gaste. Son justo las que se rompen sin que
@@ -617,12 +620,97 @@ interesa auditar.
 
 ---
 
+## 6-sexies. Fase 8 — Rendimiento y exactitud (cerrada)
+
+Cuatro asuntos acumulados de fases anteriores.
+
+### `calificacion.valor` pasa a `BigDecimal` / `DECIMAL(3,2)` (V14)
+
+La decisión que se venía aplazando desde la Fase 3. `DOUBLE` es binario y no
+representa exactamente valores como 2.9 o 3.05. Con notas eso no es teórico:
+**RB-12 decide la aprobación comparando contra 3.0**, y una nota almacenada como
+2.9999999999999996 cae del lado equivocado de una comparación que decide si
+alguien pierde el año. El error además se acumula al promediar ponderando.
+
+- V14 convierte `calificacion.valor`, `novedad_nota.valor_anterior` / `_nuevo` y
+  `entrega_tarea.calificacion` a `DECIMAL(3,2)`.
+- El dominio `Calificacion` **normaliza a dos decimales** y compara con
+  `compareTo`, no con `equals`: 3.0 y 3.00 son el mismo número pero `equals` los
+  considera distintos, y ese es el error clásico al adoptar `BigDecimal`.
+- En el promedio ponderado, **los aportes se acumulan sin redondear y solo se
+  redondea el total**. Redondear cada sumando desplaza el resultado.
+- **El porcentaje de asistencia (RB-04) se queda en `double` a propósito**: es un
+  porcentaje calculado, no un valor de la escala, y ahí el redondeo binario no
+  decide ninguna regla. Convertirlo habría sido churn sin beneficio.
+
+### El boletín ya no hace N+1 consultas
+
+Lo introdujo la propia Fase 6. Por cada materia del plan se pedían las notas, las
+ponderaciones y la asistencia por separado: con un plan de diez asignaturas, una
+treintena de consultas por boletín. Ahora son **tres**, y el cálculo se separó de
+la carga de datos (`promedioDe` no consulta nada), que es lo que permite
+resolver todas las materias con lo ya traído. `AsistenciaService` expone
+`materiasSinDerechoAEvaluacion`, que resuelve RB-04 del periodo entero de una vez.
+
+### `ContextoUsuario` memoriza la identidad por petición
+
+Una sola llamada a `puedeVerEstudiante` leía la cuenta **cuatro veces**
+(`tieneVisionInstitucional`, `usuarioIdActual` y `cursosDelDocente` la recargaban
+cada una), y los servicios encadenan varias comprobaciones por petición. Dentro
+de una petición la respuesta no puede cambiar, así que memorizarla es exacto, no
+una aproximación.
+
+**Es un `ThreadLocal` y no un bean `@RequestScope`** porque `ContextoUsuario`
+también se usa desde listeners de eventos, donde un bean de ámbito petición
+falla. `LimpiezaIdentidadFilter` lo vacía en un `finally`, el primero de la
+cadena.
+
+> **Lo importante de esta pieza no es el ahorro, es la limpieza.** El servidor
+> reutiliza hilos: una identidad que sobrevive al final de la petición se la
+> encuentra la siguiente que use ese hilo. Por eso la memoria va **siempre
+> marcada con el correo** y se descarta si no coincide, y por eso
+> `IdentidadDeLaPeticionTest` prueba explícitamente ese caso. Si algún día se
+> toca el filtro, esa prueba es la red.
+
+Las pruebas de `ContextoUsuarioTest` lo detectaron al instante: todas usan el
+mismo correo, así que la identidad memorizada por una prueba se la encontraba la
+siguiente. Se limpia en el `@AfterEach`, igual que hace el filtro.
+
+### Límite de peticiones en la recuperación de contraseña
+
+Pendiente de la Fase 7. Sin él, cualquiera podía pedir enlaces en bucle para un
+correo conocido y llenarle el buzón. Se limita por cuenta y ventana
+(`max-solicitudes: 3`, `ventana-minutos: 15`) **contando las filas que ya existen
+en `token_recuperacion`**, sin llevar estado aparte — lo que además hace que el
+límite funcione con varias instancias.
+
+Se corta **en silencio**: responder "demasiadas peticiones" confirmaría que ese
+correo tiene cuenta, que es justo lo que el endpoint evita.
+
+### Una trampa que costó tiempo
+
+**`mvn compile` puede pasar sin recompilar.** Tras cambiar los tipos, `mvn
+compile` dio BUILD SUCCESS con el código a medio convertir; `mvn clean compile`
+sacó 26 errores. Es la misma trampa del `target/` ya compilado que la sección 1
+describe para el JDK. **En un refactor de tipos, usar siempre `mvn clean
+compile`** o directamente `mvn test`, que sí recompila.
+
+### Lo que se dejó fuera
+
+- **La limpieza de tokens de recuperación caducados sigue pendiente** (tarea
+  `@Scheduled`, como `AlertasProgramadas`). La tabla crece de forma monótona.
+- **`ContextoUsuario` sigue haciendo varias consultas distintas por
+  comprobación** (perfiles, vínculos, matrículas). Lo memorizado es la identidad,
+  no el alcance completo; `cursosDelDocente()` todavía consulta cada vez que se
+  le llama.
+
+---
+
 ## 7. Fases restantes
 
 | # | Fase | Notas |
 |---|---|---|
-| 8 | **Rendimiento** | Siguiente. Ver la nota de `calcularPromedio` en la sección 3 y el N+1 del boletín en la 6-quater. `ContextoUsuario` consulta el usuario en cada comprobación: hay margen para memorizarlo por petición. **Aquí entra el paso de `calificacion.valor` a `BigDecimal`/`DECIMAL(3,2)`**, y el `rate limit` de la recuperación (6-quinquies). |
-| 9 | Limpieza | Aquí entra el panel de configuración institucional (RF-59): escala de calificación, % mínimo de asistencia y máximo de horas por docente pasan de constantes/propiedades a datos. |
+| 9 | **Limpieza** | Siguiente. Aquí entra el panel de configuración institucional (RF-59): escala de calificación, % mínimo de asistencia y máximo de horas por docente pasan de constantes/propiedades a datos. También la limpieza de tokens caducados (6-sexies). |
 | 10 | Preparación frontend | El frontend hoy es mínimo: login y pantalla de inicio. |
 
 ### Decisiones ya tomadas (no volver a discutirlas)
@@ -645,7 +733,7 @@ backend/          Spring Boot 3.3.5, Java 21, arquitectura hexagonal por módulo
     <modulo>/domain           reglas de negocio puras
     <modulo>/application      casos de uso (aquí vive el control de acceso)
     <modulo>/infrastructure   persistence (JPA) y rest (controladores)
-  src/main/resources/db/migration   Flyway V1..V13
+  src/main/resources/db/migration   Flyway V1..V14
 frontend/         React 18 + Vite + Tailwind, servido por nginx
 docker-compose.yml   mysql + backend + frontend
 EDUCKTRACK_REQUIREMENTS.md   fuente de verdad (NO TOCAR)

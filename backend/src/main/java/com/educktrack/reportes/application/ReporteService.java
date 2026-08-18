@@ -21,6 +21,8 @@ import com.educktrack.reportes.infrastructure.rest.ReporteDtos.RendimientoEstudi
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -60,17 +62,17 @@ public class ReporteService {
     @Transactional(readOnly = true)
     public PanelIndicadoresDto panelIndicadores() {
         List<CalificacionJpaEntity> notas = calificacionRepository.findAll();
-        double promedioGeneral = notas.isEmpty() ? 0.0
-                : redondear(notas.stream().mapToDouble(CalificacionJpaEntity::getValor).average().orElse(0.0));
+        BigDecimal promedioGeneral = redondear(mediaDe(
+                notas.stream().map(CalificacionJpaEntity::getValor).toList()));
 
-        Map<Long, Double> promedioPorEstudiante = notas.stream().collect(Collectors.groupingBy(
+        Map<Long, List<BigDecimal>> notasPorEstudiante = notas.stream().collect(Collectors.groupingBy(
                 CalificacionJpaEntity::getEstudianteId,
-                Collectors.averagingDouble(CalificacionJpaEntity::getValor)));
-        long enRiesgo = promedioPorEstudiante.values().stream()
-                .filter(p -> p < Calificacion.NOTA_APROBATORIA).count();
+                Collectors.mapping(CalificacionJpaEntity::getValor, Collectors.toList())));
+        long enRiesgo = notasPorEstudiante.values().stream()
+                .filter(valores -> !Calificacion.esAprobatoria(mediaDe(valores))).count();
 
         return new PanelIndicadoresDto(promedioGeneral, asistenciaInstitucional().asistenciaPromedio(),
-                enRiesgo, promedioPorEstudiante.size());
+                enRiesgo, notasPorEstudiante.size());
     }
 
     /** RF-48: asistencia institucional consolidada (RB-04 solo cuenta injustificadas). */
@@ -80,7 +82,7 @@ public class ReporteService {
         long total = registros.size();
         long ausInjust = registros.stream()
                 .filter(r -> r.getEstado() == EstadoAsistencia.AUSENTE && !r.isJustificada()).count();
-        double promedio = total == 0 ? 100.0 : redondear((total - ausInjust) * 100.0 / total);
+        double promedio = total == 0 ? 100.0 : redondearPorcentaje((total - ausInjust) * 100.0 / total);
         return new AsistenciaInstitucionalDto(total, ausInjust, promedio);
     }
 
@@ -103,22 +105,40 @@ public class ReporteService {
                 .map(estId -> filaRendimiento(estId, materias, periodoAcademicoId))
                 .toList();
 
-        double promedioCurso = filas.isEmpty() ? 0.0
-                : redondear(filas.stream().mapToDouble(RendimientoEstudianteDto::promedioGeneral).average().orElse(0.0));
+        BigDecimal promedioCurso = redondear(mediaDe(
+                filas.stream().map(RendimientoEstudianteDto::promedioGeneral).toList()));
         return new RendimientoCursoDto(cursoId, periodoAcademicoId, filas, promedioCurso);
     }
 
     private RendimientoEstudianteDto filaRendimiento(Long estudianteId, List<Long> materias, Long periodoId) {
-        double promedio = materias.isEmpty() ? 0.0 : redondear(materias.stream()
-                .mapToDouble(mat -> calificacionService.calcularPromedio(estudianteId, mat, periodoId).promedio())
-                .average().orElse(0.0));
+        BigDecimal promedio = redondear(mediaDe(materias.stream()
+                .map(mat -> calificacionService.calcularPromedio(estudianteId, mat, periodoId).promedio())
+                .toList()));
         String nombre = estudianteRepository.findById(estudianteId)
                 .map(e -> e.getNombres() + " " + e.getApellidos()).orElse("Estudiante " + estudianteId);
         return new RendimientoEstudianteDto(estudianteId, nombre, promedio,
-                promedio >= Calificacion.NOTA_APROBATORIA);
+                Calificacion.esAprobatoria(promedio));
     }
 
-    private static double redondear(double v) {
+    /**
+     * El porcentaje de asistencia (RB-04) se queda en {@code double}: es un
+     * porcentaje calculado, no un valor de la escala de notas, y ahi el
+     * redondeo binario no decide ninguna regla.
+     */
+    private static double redondearPorcentaje(double v) {
         return Math.round(v * 100.0) / 100.0;
+    }
+
+    private static BigDecimal redondear(BigDecimal v) {
+        return v.setScale(Calificacion.ESCALA, RoundingMode.HALF_UP);
+    }
+
+    /** Media de un conjunto de notas; cero si no hay ninguna. */
+    private static BigDecimal mediaDe(List<BigDecimal> valores) {
+        if (valores.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        return valores.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(valores.size()), 6, RoundingMode.HALF_UP);
     }
 }

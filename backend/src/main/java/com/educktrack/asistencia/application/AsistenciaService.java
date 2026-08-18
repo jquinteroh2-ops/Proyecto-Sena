@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -207,6 +208,29 @@ public class AsistenciaService {
         return calcularPorcentaje(asistenciaRepository
                 .findByEstudianteIdAndMateriaIdAndPeriodoAcademicoId(estudianteId, materiaId, periodoAcademicoId))
                 >= PORCENTAJE_MINIMO;
+    }
+
+    /**
+     * RB-04: materias del periodo en las que el estudiante <strong>perdio</strong>
+     * el derecho a evaluacion ordinaria, resueltas en una sola consulta y
+     * <strong>sin control de acceso</strong> (mismas condiciones de uso que
+     * {@link #conservaDerechoAEvaluacion}).
+     *
+     * <p>Existe para el boletin: preguntar materia por materia convertia RB-04
+     * en una consulta por cada asignatura del plan. Solo devuelve las materias
+     * con asistencia registrada, porque sin registros el porcentaje es 100% y no
+     * hay derecho que perder.</p>
+     */
+    @Transactional(readOnly = true)
+    public Set<Long> materiasSinDerechoAEvaluacion(Long estudianteId, Long periodoAcademicoId) {
+        return asistenciaRepository
+                .findByEstudianteIdAndPeriodoAcademicoId(estudianteId, periodoAcademicoId)
+                .stream()
+                .collect(Collectors.groupingBy(AsistenciaJpaEntity::getMateriaId))
+                .entrySet().stream()
+                .filter(e -> calcularPorcentaje(e.getValue()) < PORCENTAJE_MINIMO)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
     }
 
     private ReporteAsistenciaDto construirReporte(Long estudianteId, Long materiaId, Long periodoId,

@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,14 +71,14 @@ class BoletinAcademicoTest {
         lenient().when(ponderacionRepository.findByMateriaIdAndPeriodoAcademicoId(any(), any()))
                 .thenReturn(List.of());
         // Salvo que la prueba diga lo contrario, la asistencia esta en regla.
-        lenient().when(asistencia.conservaDerechoAEvaluacion(any(), any(), any())).thenReturn(true);
+        lenient().when(asistencia.materiasSinDerechoAEvaluacion(any(), any())).thenReturn(java.util.Set.of());
     }
 
     @Test
     void noApruebaSiUnaMateriaDelPlanNoTieneNingunaNota() {
         planDelCurso(MATEMATICAS, SOCIALES);
-        notasDelPeriodo(nota(MATEMATICAS, 4.5));
-        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, 4.5));
+        notasDelPeriodo(nota(MATEMATICAS, "4.5"));
+        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, "4.5"));
 
         BoletinDto boletin = service.boletin(ESTUDIANTE, CURSO, PERIODO);
 
@@ -93,23 +94,23 @@ class BoletinAcademicoTest {
     @Test
     void apruebaCuandoTodasLasMateriasDelPlanEstanAprobadas() {
         planDelCurso(MATEMATICAS, SOCIALES);
-        notasDelPeriodo(nota(MATEMATICAS, 4.0), nota(SOCIALES, 3.5));
-        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, 4.0));
-        notasDeLaMateria(SOCIALES, nota(SOCIALES, 3.5));
+        notasDelPeriodo(nota(MATEMATICAS, "4.0"), nota(SOCIALES, "3.5"));
+        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, "4.0"));
+        notasDeLaMateria(SOCIALES, nota(SOCIALES, "3.5"));
 
         BoletinDto boletin = service.boletin(ESTUDIANTE, CURSO, PERIODO);
 
         assertTrue(boletin.aprobado());
-        assertEquals(3.75, boletin.promedioGeneral());
+        assertEquals(new BigDecimal("3.75"), boletin.promedioGeneral());
         assertTrue(boletin.materias().stream().noneMatch(BoletinMateriaDto::sinCalificar));
     }
 
     @Test
     void noApruebaConUnaMateriaDelPlanPorDebajoDeLaNotaMinima() {
         planDelCurso(MATEMATICAS, SOCIALES);
-        notasDelPeriodo(nota(MATEMATICAS, 4.8), nota(SOCIALES, 2.9));
-        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, 4.8));
-        notasDeLaMateria(SOCIALES, nota(SOCIALES, 2.9));
+        notasDelPeriodo(nota(MATEMATICAS, "4.8"), nota(SOCIALES, "2.9"));
+        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, "4.8"));
+        notasDeLaMateria(SOCIALES, nota(SOCIALES, "2.9"));
 
         BoletinDto boletin = service.boletin(ESTUDIANTE, CURSO, PERIODO);
 
@@ -122,9 +123,9 @@ class BoletinAcademicoTest {
         // El plan puede cambiar a mitad de periodo. Ocultar esas notas haria
         // desaparecer del boletin calificaciones que el estudiante si tiene.
         planDelCurso(MATEMATICAS);
-        notasDelPeriodo(nota(MATEMATICAS, 4.0), nota(SOCIALES, 3.2));
-        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, 4.0));
-        notasDeLaMateria(SOCIALES, nota(SOCIALES, 3.2));
+        notasDelPeriodo(nota(MATEMATICAS, "4.0"), nota(SOCIALES, "3.2"));
+        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, "4.0"));
+        notasDeLaMateria(SOCIALES, nota(SOCIALES, "3.2"));
 
         BoletinDto boletin = service.boletin(ESTUDIANTE, CURSO, PERIODO);
 
@@ -140,9 +141,10 @@ class BoletinAcademicoTest {
         // mezclarlas impediria distinguir quien perdio la materia de quien
         // perdio la asistencia.
         planDelCurso(MATEMATICAS);
-        notasDelPeriodo(nota(MATEMATICAS, 4.2));
-        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, 4.2));
-        when(asistencia.conservaDerechoAEvaluacion(ESTUDIANTE, MATEMATICAS, PERIODO)).thenReturn(false);
+        notasDelPeriodo(nota(MATEMATICAS, "4.2"));
+        notasDeLaMateria(MATEMATICAS, nota(MATEMATICAS, "4.2"));
+        when(asistencia.materiasSinDerechoAEvaluacion(ESTUDIANTE, PERIODO))
+                .thenReturn(java.util.Set.of(MATEMATICAS));
 
         BoletinDto boletin = service.boletin(ESTUDIANTE, CURSO, PERIODO);
 
@@ -185,14 +187,14 @@ class BoletinAcademicoTest {
                 ESTUDIANTE, materiaId, PERIODO)).thenReturn(List.of(notas));
     }
 
-    private static CalificacionJpaEntity nota(Long materiaId, double valor) {
+    private static CalificacionJpaEntity nota(Long materiaId, String valor) {
         CalificacionJpaEntity e = new CalificacionJpaEntity();
         e.setEstudianteId(ESTUDIANTE);
         e.setMateriaId(materiaId);
         e.setCursoId(CURSO);
         e.setPeriodoAcademicoId(PERIODO);
         e.setTipo(TipoEvaluacion.EXAMEN);
-        e.setValor(valor);
+        e.setValor(new BigDecimal(valor));
         return e;
     }
 
