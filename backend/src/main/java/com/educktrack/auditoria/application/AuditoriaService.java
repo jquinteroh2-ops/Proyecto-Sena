@@ -84,6 +84,26 @@ public class AuditoriaService {
                 operacion, null, null, descripcion);
     }
 
+    /**
+     * Registra una operacion en transaccion propia, de modo que la anotacion
+     * sobreviva al rollback de quien la llama.
+     *
+     * <p>Mismo motivo que {@link #registrarAcceso}: cuando la operacion que se
+     * audita es un <em>intento fallido</em>, el fallo se senala lanzando una
+     * excepcion, y una anotacion que participe de esa transaccion desaparece
+     * justo en el caso que mas interesa auditar. Lo usa la recuperacion de
+     * contrasena (HU-04: "los intentos de recuperacion fallidos quedan
+     * registrados").</p>
+     *
+     * <p>No admite entidad ni identificador a proposito: un intento fallido no
+     * recae sobre ningun registro concreto, y aceptar uno invitaria a anotar el
+     * de la cuenta que se estaba tanteando.</p>
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void registrarPeseARollback(TipoOperacion operacion, String descripcion) {
+        guardar(usuarioActual(), operacion, null, null, descripcion);
+    }
+
     private void guardar(String usuario, TipoOperacion operacion, String entidad,
                          Long entidadId, String descripcion) {
         AuditoriaJpaEntity registro = new AuditoriaJpaEntity();

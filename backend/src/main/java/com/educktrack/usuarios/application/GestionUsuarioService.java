@@ -4,6 +4,7 @@ import com.educktrack.auditoria.application.AuditoriaService;
 import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import com.educktrack.usuarios.domain.NombreRol;
+import com.educktrack.usuarios.domain.PoliticaPassword;
 import com.educktrack.usuarios.domain.Usuario;
 import com.educktrack.usuarios.domain.evento.EventosDeUsuarios.UsuarioDesactivado;
 import com.educktrack.usuarios.infrastructure.persistence.RolJpaEntity;
@@ -52,6 +53,9 @@ public class GestionUsuarioService {
         if (usuarioRepository.existsByCorreoInstitucional(request.correo())) {
             throw new ReglaNegocioException("HU-01", "El correo institucional ya esta registrado.");
         }
+        // La politica vive en el dominio y no solo en la anotacion del DTO, para
+        // que el alta y la recuperacion (HU-04) no puedan exigir cosas distintas.
+        PoliticaPassword.exigirCumplimiento(request.password());
 
         Set<NombreRol> roles = new LinkedHashSet<>(request.roles());
         // Construir el dominio valida RB-14 (roles Estudiante/Docente excluyentes).

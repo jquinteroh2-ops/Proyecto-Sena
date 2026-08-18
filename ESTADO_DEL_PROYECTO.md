@@ -10,9 +10,9 @@
 
 ## 1. Cómo continuar
 
-**La siguiente fase pendiente es la 7 (Recuperación de contraseña).** Las fases 1
-a 6 están cerradas. Lo que quedó deliberadamente fuera está anotado al final de
-cada sección de fase.
+**La siguiente fase pendiente es la 8 (Rendimiento).** Las fases 1 a 7 están
+cerradas. Lo que quedó deliberadamente fuera está anotado al final de cada
+sección de fase.
 
 Antes de tocar nada, leer la sección 2 (reglas absolutas). Y para compilar:
 
@@ -54,10 +54,10 @@ ya funciona.
 
 | | Estado |
 |---|---|
-| Rama de trabajo | `fase-6-reglas-academicas` (fases 1–5 integradas en `main` el 16/08/2026) |
-| Pruebas | **110 en verde** |
-| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones) y 6 (Reglas académicas) |
-| Desplegado | Sí, en Railway (ver sección 5). **La Fase 6 aún no se ha desplegado: V12 no se ha aplicado al MySQL real.** |
+| Rama de trabajo | `main` (fases 1–7 integradas el 18/08/2026) |
+| Pruebas | **123 en verde** |
+| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones), 6 (Reglas académicas) y 7 (Recuperación de contraseña) |
+| Desplegado | Hasta la Fase 5. **Las fases 6 y 7 no se han desplegado: V12 y V13 no se han aplicado al MySQL real.** |
 
 ### Fase 1 — Identidad (cerrada)
 
@@ -120,7 +120,7 @@ comprobación una vez por nota. Si añades un cálculo masivo, sigue ese patrón
 
 ## 4. Pruebas
 
-110 en verde. Piezas que conviene entender antes de tocarlas:
+123 en verde. Piezas que conviene entender antes de tocarlas:
 
 - **`ContextoUsuarioTest`** (20) — la *lógica* de la decisión de acceso, con
   dobles de prueba (Mockito).
@@ -140,6 +140,11 @@ comprobación una vez por nota. Si añades un cálculo masivo, sigue ese patrón
   demuestra la exclusión mutua (haría falta concurrencia real contra MySQL), pero
   sí que la consulta existe y es JPQL válido, que es donde está el riesgo
   práctico: un fallo ahí solo aparecería al matricular.
+- **`RecuperacionPasswordServiceTest`** (10) — las propiedades de seguridad de
+  HU-04: que solicitar no revele si la cuenta existe, que en base de datos quede
+  el hash y no el token, que el enlace se consuma una sola vez y que una
+  contraseña rechazada **no** lo gaste. Son justo las que se rompen sin que
+  ninguna prueba funcional se entere.
 
 **Perfil `test`** (`src/test/resources/application-test.yml`): Flyway
 desactivado y `ddl-auto: create-drop`, porque las migraciones son específicas de
@@ -526,12 +531,97 @@ nadie la leía y nadie la escribía. La versión real del esquema la lleva
 
 ---
 
+## 6-quinquies. Fase 7 — Recuperación de contraseña (cerrada)
+
+**El hallazgo de partida:** `POST /api/auth/recuperar-password` existía, pero
+recibía un cuerpo, **lo ignoraba por completo** y devolvía un mensaje fijo. Su
+Javadoc decía que el envío real llegaría "en la Fase 8". Ninguno de los cinco
+criterios de HU-04 estaba implementado.
+
+### Cómo funciona ahora
+
+Migración **V13**, tabla `token_recuperacion`. Dos endpoints públicos:
+`/api/auth/recuperar-password` (solicitar) y `/api/auth/restablecer-password`
+(consumir).
+
+**Dos propiedades sostienen todo lo demás:**
+
+1. **Solicitar no revela nada.** La respuesta es idéntica exista o no la cuenta,
+   esté activa o no, y salga o no el correo — incluso si el envío falla, la
+   excepción no se propaga. Un endpoint público que responde distinto según el
+   caso es un oráculo para averiguar qué correos están dados de alta; es el mismo
+   motivo por el que el acceso fallido no distingue "no existe" de "contraseña
+   errónea" (Fase 4).
+2. **El token solo existe en claro dentro del correo.** En base de datos vive su
+   hash, y ni el log de auditoría ni los eventos lo llevan. Un enlace vivo
+   permite tomar la cuenta sin conocer la contraseña: es una credencial, y
+   guardarla en claro sería repartirla.
+
+**El hash del token es SHA-256, no BCrypt**, a diferencia de la contraseña.
+BCrypt es lento a propósito para que no se pueda adivinar un secreto de baja
+entropía elegido por una persona; aquí el token son 256 bits aleatorios y no hay
+diccionario que probar. Además BCrypt lleva sal propia, lo que obligaría a
+recorrer la tabla fila por fila en vez de buscar por índice.
+
+**Caducidad y uso único son dos límites distintos**, y HU-04 pide los dos: 30
+minutos acotan cuánto vive la credencial en el buzón; el consumo al primer uso
+impide que quien lea el correo más tarde la reutilice. `fecha_uso` NULL es lo que
+expresa "sin usar"; la fila no se borra al consumirla, porque un token gastado
+que reaparece es justo lo que interesa poder auditar. Además, **pedir un enlace
+nuevo anula los anteriores**: si no, un correo antiguo reenviado seguiría
+abriendo la cuenta.
+
+**El enlace no pasa por el módulo de notificaciones.** `notificar()` siempre deja
+copia en la bandeja interna y solo envía correo si el canal configurado lo
+incluye (y el valor por defecto es `INTERNO`). Ninguna de las dos cosas sirve: la
+bandeja se lee *entrando al sistema*, que es exactamente lo que esta persona no
+puede hacer, y un enlace vivo guardado ahí es una credencial en claro. Por eso
+`EnvioEnlaceRecuperacion` envía por correo directo. El aviso de "tu contraseña
+fue cambiada" sí va por el pipeline normal: no lleva ningún secreto.
+
+**La política de contraseña pasó a ser un concepto de dominio**
+(`PoliticaPassword`). Vivía solo como un `@Size(min = 8)` en el DTO de registro,
+y una regla declarada en un único punto de entrada no es una política: la
+recuperación habría nacido sin ella. Ahora la aplican el alta y el
+restablecimiento.
+
+**Orden deliberado en `restablecer`:** la política se valida **antes** de
+consumir el enlace. Al revés, escribir una contraseña demasiado corta gastaría el
+enlace y obligaría a pedir otro.
+
+**Auditoría:** `RECUPERACION_SOLICITADA`, `RECUPERACION_FALLIDA` y
+`PASSWORD_RESTABLECIDA`. Los intentos fallidos usan
+`AuditoriaService.registrarPeseARollback` (`REQUIRES_NEW`, mismo motivo que
+`registrarAcceso` en la Fase 4): el fallo se señala lanzando excepción, y una
+anotación que participe de esa transacción desaparecería justo en el caso que más
+interesa auditar.
+
+### Lo que queda pendiente
+
+- **Sin `spring.mail.*` configurado, la recuperación no funciona.** En Railway no
+  lo está (nota de la Fase 5), así que hoy el enlace no llega a nadie. **Es el
+  bloqueante para dar RF-64 por operativo en el entorno desplegado**, y no se
+  arregla con código: hace falta un servidor SMTP.
+- **No hay pantalla de frontend.** `educktrack.seguridad.recuperacion.url-base`
+  apunta a `/restablecer-password`, que todavía no existe: es Fase 10.
+- **No hay límite de peticiones.** Alguien puede pedir enlaces en bucle para un
+  correo conocido y llenarle el buzón. El log lo deja registrado, pero no lo
+  impide; un `rate limit` es material de la Fase 8.
+- **Los tokens caducados no se borran nunca.** La tabla crece de forma monótona.
+  Con el volumen de un colegio no es un problema a corto plazo, pero conviene una
+  tarea de limpieza (`@Scheduled`, como `AlertasProgramadas`).
+- **Nota sobre `BootstrapAdministrador`:** ahora la contraseña del administrador
+  inicial también pasa por la política. Si `EDUCKTRACK_BOOTSTRAP_ADMIN_PASSWORD`
+  tuviera menos de 8 caracteres, la cuenta no se crearía; el arranque **no** se
+  rompe porque el bootstrap ya capturaba el fallo y lo registra.
+
+---
+
 ## 7. Fases restantes
 
 | # | Fase | Notas |
 |---|---|---|
-| 7 | **Recuperación de contraseña** | Siguiente. Existe `POST /api/auth/recuperar-password`: verificar si está realmente implementado. |
-| 8 | Rendimiento | Ver la nota de `calcularPromedio` en la sección 3 y el N+1 del boletín en la 6-quater. `ContextoUsuario` consulta el usuario en cada comprobación: hay margen para memorizarlo por petición. **Aquí entra el paso de `calificacion.valor` a `BigDecimal`/`DECIMAL(3,2)`.** |
+| 8 | **Rendimiento** | Siguiente. Ver la nota de `calcularPromedio` en la sección 3 y el N+1 del boletín en la 6-quater. `ContextoUsuario` consulta el usuario en cada comprobación: hay margen para memorizarlo por petición. **Aquí entra el paso de `calificacion.valor` a `BigDecimal`/`DECIMAL(3,2)`**, y el `rate limit` de la recuperación (6-quinquies). |
 | 9 | Limpieza | Aquí entra el panel de configuración institucional (RF-59): escala de calificación, % mínimo de asistencia y máximo de horas por docente pasan de constantes/propiedades a datos. |
 | 10 | Preparación frontend | El frontend hoy es mínimo: login y pantalla de inicio. |
 
@@ -555,7 +645,7 @@ backend/          Spring Boot 3.3.5, Java 21, arquitectura hexagonal por módulo
     <modulo>/domain           reglas de negocio puras
     <modulo>/application      casos de uso (aquí vive el control de acceso)
     <modulo>/infrastructure   persistence (JPA) y rest (controladores)
-  src/main/resources/db/migration   Flyway V1..V12
+  src/main/resources/db/migration   Flyway V1..V13
 frontend/         React 18 + Vite + Tailwind, servido por nginx
 docker-compose.yml   mysql + backend + frontend
 EDUCKTRACK_REQUIREMENTS.md   fuente de verdad (NO TOCAR)

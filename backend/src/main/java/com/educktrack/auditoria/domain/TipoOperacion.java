@@ -56,7 +56,21 @@ public enum TipoOperacion {
     ASISTENCIA_JUSTIFICADA,
 
     /** RF-20 / HU-10 / RB-07: configuracion de ponderaciones. */
-    PONDERACION_CONFIGURADA;
+    PONDERACION_CONFIGURADA,
+
+    /** RF-64 / HU-04: se emitio un enlace de recuperacion de contrasena. */
+    RECUPERACION_SOLICITADA,
+
+    /**
+     * RF-64 / HU-04: intento de recuperacion que no prospero (correo sin cuenta
+     * activa, o enlace invalido, caducado o ya usado). HU-04 pide expresamente
+     * que estos intentos queden registrados: son la senal de que alguien esta
+     * tanteando cuentas ajenas.
+     */
+    RECUPERACION_FALLIDA,
+
+    /** RF-64 / HU-04: contrasena restablecida mediante un enlace valido. */
+    PASSWORD_RESTABLECIDA;
 
     /** RF-05: distingue los eventos de sesion del resto del log. */
     public boolean esAcceso() {

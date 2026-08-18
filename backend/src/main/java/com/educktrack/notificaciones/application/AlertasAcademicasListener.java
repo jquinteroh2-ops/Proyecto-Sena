@@ -5,6 +5,7 @@ import com.educktrack.estudiantes.domain.evento.EventosDeEstudiantes.EstudianteR
 import com.educktrack.notas.domain.evento.EventosDeNotas.CorteCerrado;
 import com.educktrack.notas.domain.evento.EventosDeNotas.NotaBajaRegistrada;
 import com.educktrack.notificaciones.domain.TipoNotificacion;
+import com.educktrack.seguridad.domain.evento.EventosDeSeguridad.PasswordRestablecida;
 import com.educktrack.usuarios.domain.evento.EventosDeUsuarios.UsuarioDesactivado;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,6 +113,30 @@ public class AlertasAcademicasListener {
                 "La cuenta " + evento.correoInstitucional() + " fue desactivada y ya no permite "
                         + "iniciar sesion. El historial academico asociado se conserva intacto.",
                 "desactivacion de la cuenta " + evento.usuarioId());
+    }
+
+    /**
+     * HU-04: se avisa de que la contrasena se restablecio.
+     *
+     * <p>No es una cortesia: si quien lo recibe no pidio el cambio, este aviso
+     * es la unica senal de que alguien mas tiene acceso a su correo, y llega a
+     * tiempo de reaccionar.</p>
+     *
+     * <p>El aviso va <em>despues</em> del cambio y no lleva ningun secreto. El
+     * enlace de recuperacion, que si lo es, nunca pasa por aqui: lo envia
+     * {@code EnvioEnlaceRecuperacion} por correo directo, porque este metodo
+     * deja copia en la bandeja interna y esa bandeja solo se lee entrando al
+     * sistema.</p>
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void alRestablecerLaPassword(PasswordRestablecida evento) {
+        enviar(Set.of(evento.usuarioId()),
+                TipoNotificacion.GENERAL,
+                "Contrasena actualizada",
+                "La contrasena de la cuenta " + evento.correoInstitucional() + " se restablecio "
+                        + "mediante un enlace de recuperacion. Si no fuiste tu, avisa a coordinacion "
+                        + "de inmediato.",
+                "restablecimiento de contrasena de la cuenta " + evento.usuarioId());
     }
 
     /**

@@ -1,6 +1,9 @@
 package com.educktrack.seguridad.infrastructure.rest;
 
 import com.educktrack.seguridad.application.AutenticacionService;
+import com.educktrack.seguridad.application.RecuperacionPasswordService;
+import com.educktrack.seguridad.infrastructure.rest.RecuperacionDtos.RecuperarPasswordRequest;
+import com.educktrack.seguridad.infrastructure.rest.RecuperacionDtos.RestablecerPasswordRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -22,9 +25,12 @@ import java.util.Map;
 public class AuthController {
 
     private final AutenticacionService autenticacionService;
+    private final RecuperacionPasswordService recuperacionService;
 
-    public AuthController(AutenticacionService autenticacionService) {
+    public AuthController(AutenticacionService autenticacionService,
+                          RecuperacionPasswordService recuperacionService) {
         this.autenticacionService = autenticacionService;
+        this.recuperacionService = recuperacionService;
     }
 
     /** RF-60: autentica al usuario y emite un token JWT. */
@@ -48,15 +54,34 @@ public class AuthController {
     }
 
     /**
-     * RF-64: solicitud de recuperacion de contrasena. DECISION DE DISENO: el envio
-     * real del correo con enlace temporal (HU-04) se implementa en la Fase 8
-     * (modulo de notificaciones); aqui se expone el endpoint publico que siempre
-     * responde 200 para no revelar si el correo existe.
+     * RF-64 / HU-04: solicita un enlace de recuperacion de contrasena.
+     *
+     * <p>Responde siempre lo mismo, exista o no la cuenta y salga o no el
+     * correo. Distinguir los casos convertiria este endpoint publico en un
+     * oraculo para averiguar que correos estan dados de alta.</p>
      */
     @PostMapping("/recuperar-password")
-    @Operation(summary = "Solicitar recuperacion de contrasena (RF-64)")
-    public ResponseEntity<Map<String, String>> recuperarPassword(@RequestBody Map<String, String> body) {
+    @Operation(summary = "Solicitar recuperacion de contrasena (RF-64, HU-04)")
+    public ResponseEntity<Map<String, String>> recuperarPassword(
+            @Valid @RequestBody RecuperarPasswordRequest request) {
+        recuperacionService.solicitar(request.correo());
         return ResponseEntity.ok(Map.of("mensaje",
                 "Si el correo esta registrado, se enviaran instrucciones de recuperacion."));
+    }
+
+    /**
+     * RF-64 / HU-04: restablece la contrasena consumiendo el enlace recibido.
+     *
+     * <p>El enlace caduca a los 30 minutos y ademas se consume al primer uso.
+     * Un enlace invalido, caducado o ya gastado responde con el mismo error,
+     * porque diferenciarlos solo ayudaria a quien esta probando enlaces.</p>
+     */
+    @PostMapping("/restablecer-password")
+    @Operation(summary = "Restablecer contrasena con el enlace recibido (RF-64, HU-04)")
+    public ResponseEntity<Map<String, String>> restablecerPassword(
+            @Valid @RequestBody RestablecerPasswordRequest request) {
+        recuperacionService.restablecer(request.token(), request.nuevaPassword());
+        return ResponseEntity.ok(Map.of("mensaje",
+                "Contrasena actualizada correctamente. Ya puede iniciar sesion."));
     }
 }

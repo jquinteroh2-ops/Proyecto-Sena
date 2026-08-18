@@ -36,6 +36,9 @@ public class SecurityConfig {
     private static final String[] RUTAS_PUBLICAS = {
             "/api/auth/login",
             "/api/auth/recuperar-password",
+            // RF-64: quien restablece su contrasena no tiene sesion; el enlace
+            // de un solo uso es lo que autoriza la operacion.
+            "/api/auth/restablecer-password",
             "/api/health",
             "/v3/api-docs/**",
             "/swagger-ui/**",
