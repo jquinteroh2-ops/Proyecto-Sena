@@ -61,6 +61,14 @@ educktrack:
     # y del fin del periodo academico (RF-55).
     dias-aviso-tarea: ${EDUCKTRACK_DIAS_AVISO_TAREA:3}
     dias-aviso-cierre: ${EDUCKTRACK_DIAS_AVISO_CIERRE:7}
+  seguridad:
+    recuperacion:
+      # HU-04: el enlace de recuperacion caduca a los 30 minutos y ademas se
+      # consume al primer uso. Son dos limites distintos: uno acota cuanto vive
+      # la credencial en el buzon, el otro impide reutilizarla mas tarde.
+      minutos-validez: ${EDUCKTRACK_RECUPERACION_MINUTOS:30}
+      # Pantalla del frontend que recibe el token y pide la nueva contrasena.
+      url-base: ${EDUCKTRACK_RECUPERACION_URL:http://localhost:5173/restablecer-password}
   security:
     jwt:
       # DECISION DE DISENO: secreto por defecto solo para dev. En docker/prod
