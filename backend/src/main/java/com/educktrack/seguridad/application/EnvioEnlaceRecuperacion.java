@@ -37,12 +37,16 @@ public class EnvioEnlaceRecuperacion {
 
     private final JavaMailSender mailSender;
     private final String urlBase;
+    private final String remitente;
 
     public EnvioEnlaceRecuperacion(JavaMailSender mailSender,
                                    @Value("${educktrack.seguridad.recuperacion.url-base:http://localhost:5173/restablecer-password}")
-                                   String urlBase) {
+                                   String urlBase,
+                                   @Value("${educktrack.correo.remitente:no-reply@educktrack.edu.co}")
+                                   String remitente) {
         this.mailSender = mailSender;
         this.urlBase = urlBase;
+        this.remitente = remitente;
     }
 
     /**
@@ -56,6 +60,9 @@ public class EnvioEnlaceRecuperacion {
     public boolean enviar(String correoDestino, String token, int minutosValidez) {
         try {
             SimpleMailMessage msg = new SimpleMailMessage();
+            // JavaMail falla sin remitente, y Gmail exige ademas que coincida
+            // con la cuenta autenticada o uno de sus alias.
+            msg.setFrom(remitente);
             msg.setTo(correoDestino);
             msg.setSubject("Recuperacion de contrasena - EduckTrack");
             msg.setText("Recibimos una solicitud para restablecer la contrasena de esta cuenta.\n\n"
