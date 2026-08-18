@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 
-// Pantalla de inicio de sesion (RF-60, HU-04).
+// Pantalla de inicio de sesion (RF-60, RF-61).
 // La autenticacion real la resuelve el backend: este formulario solo envia las
 // credenciales y guarda el JWT emitido (RS-04). El control de acceso nunca se
 // decide aqui (RS-03: la autorizacion la impone siempre el servidor).
@@ -101,6 +101,15 @@ export default function Login() {
           >
             {enviando ? 'Verificando...' : 'Iniciar sesion'}
           </button>
+
+          {/* RF-64: sin este enlace la recuperacion existia pero no habia por
+              donde llegar a ella. */}
+          <Link
+            to="/recuperar-password"
+            className="block text-center text-sm font-medium text-educk-700 hover:underline"
+          >
+            Olvide mi contrasena
+          </Link>
         </form>
       </div>
     </main>

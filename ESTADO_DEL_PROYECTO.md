@@ -10,8 +10,8 @@
 
 ## 1. Cómo continuar
 
-**La siguiente fase pendiente es la 10 (Preparación frontend), la última.** Las
-fases 1 a 9 están cerradas. Lo que quedó deliberadamente fuera está anotado al
+**Las diez fases del plan están cerradas.** Lo que queda pendiente está
+recogido en la sección 7. Lo que quedó deliberadamente fuera está anotado al
 final de cada sección de fase.
 
 Antes de tocar nada, leer la sección 2 (reglas absolutas). Y para compilar:
@@ -54,10 +54,10 @@ ya funciona.
 
 | | Estado |
 |---|---|
-| Rama de trabajo | `main` (fases 1–9 integradas el 18/08/2026) |
+| Rama de trabajo | `main` (las 10 fases integradas el 18/08/2026) |
 | Pruebas | **147 en verde** |
-| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones), 6 (Reglas académicas), 7 (Recuperación de contraseña), 8 (Rendimiento) y 9 (Configuración institucional y limpieza) |
-| Desplegado | Hasta la Fase 5. **Las fases 6 a 9 no se han desplegado: V12 a V15 no se han aplicado al MySQL real.** |
+| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones), 6 (Reglas académicas), 7 (Recuperación de contraseña), 8 (Rendimiento), 9 (Configuración institucional y limpieza) y 10 (Preparación frontend) |
+| Desplegado | Hasta la Fase 5. **Las fases 6 a 10 no se han desplegado: V12 a V15 no se han aplicado al MySQL real.** |
 
 ### Fase 1 — Identidad (cerrada)
 
@@ -794,11 +794,92 @@ inofensivo: borrar dos veces lo mismo no duplica nada.
 
 ---
 
+## 6-octies. Fase 10 — Preparación frontend (cerrada)
+
+Última fase del plan. El frontend era login más una pantalla de inicio; ahora
+cubre las tres funcionalidades que el backend había ganado en las fases 6 a 9 y
+que **no tenían por dónde usarse**.
+
+### Recuperación de contraseña (RF-64) — el hueco más grave
+
+`educktrack.seguridad.recuperacion.url-base` apuntaba a `/restablecer-password`,
+**una ruta que no existía**. El correo que envía la Fase 7 llevaba a ninguna
+parte, y desde el login no había ningún enlace para pedirlo. Dos pantallas
+públicas nuevas, más el enlace "Olvidé mi contraseña" en el login.
+
+- **`/recuperar-password` muestra el mismo mensaje exista o no la cuenta.** El
+  backend responde igual en ambos casos a propósito; si la pantalla distinguiera
+  ("ese correo no está registrado"), el cliente desharía la propiedad que el
+  servidor se cuida de mantener.
+- **La confirmación de contraseña se comprueba en el cliente**, y esto sí tiene
+  motivo: es un error de tecleo, no una regla de negocio, y enviarlo gastaría el
+  enlace —que es de un solo uso— por haber escrito mal dos veces.
+- **Entrar sin token se detecta antes de mostrar el formulario.** Pasa al abrir
+  la ruta a mano o al copiar mal el enlace; sin eso, el formulario se enviaría
+  solo para fallar después.
+
+### Boletín (RF-35) y parámetros institucionales (RF-59)
+
+El boletín es la primera pantalla que **muestra el resultado de las reglas de las
+fases anteriores**: las materias del plan sin ninguna nota aparecen como "Sin
+calificar" e impiden aprobar (RB-11 y RB-12, Fase 6), y la pérdida del derecho a
+evaluación es una etiqueta **aparte** del estado de la materia, porque RB-04
+informa y no reprueba (decisión de la Fase 6).
+
+El identificador del estudiante sale de `/identidad/yo`, que lo resuelve el
+servidor, y no de un campo que el usuario pueda escribir: si la cuenta es de un
+estudiante se prefija el suyo, si es un acudiente se ofrecen sus tutelados, y
+solo el personal con visión institucional teclea el número.
+
+La pantalla de parámetros deja el borrador en el valor vigente cuando el servidor
+rechaza un cambio, para no dejar en pantalla un número que parezca guardado.
+
+### Lo que se comprobó y lo que no
+
+- **El build pasa** (`npm run build`, 100 módulos) y las formas de las respuestas
+  se contrastaron una a una contra los controladores.
+- **`try_files $uri $uri/ /index.html` ya estaba** en la plantilla de nginx, así
+  que el enlace del correo —que es un *deep link* a `/restablecer-password`—
+  resuelve en producción. Era el riesgo más fácil de pasar por alto.
+- **No se ejercitó la interfaz contra un backend real.** Requiere MySQL, y en
+  esta máquina no hay ni MySQL ni Docker (el mismo bloqueo que mantiene
+  Testcontainers pendiente desde la Fase 2).
+- **El frontend sigue sin ninguna prueba automatizada.** No se añadió framework
+  de pruebas porque significaba introducir dependencias nuevas al cierre del
+  plan; es la deuda más clara que queda.
+
+### Antes de desplegar
+
+**`EDUCKTRACK_RECUPERACION_URL` hay que fijarla en Railway.** Su valor por
+defecto es `http://localhost:5173/restablecer-password`, que en producción
+enviaría a la gente a su propia máquina. Debe ser:
+
+```
+https://educktrack-frontend-production.up.railway.app/restablecer-password
+```
+
+Y sigue en pie que **sin `spring.mail.*` configurado el correo no sale**, de modo
+que las pantallas funcionan pero nadie recibe el enlace.
+
+---
+
 ## 7. Fases restantes
 
-| # | Fase | Notas |
-|---|---|---|
-| 10 | **Preparación frontend** | Siguiente, y última. El frontend hoy es mínimo: login y pantalla de inicio. Faltan las pantallas de boletín, parámetros institucionales (RF-59) y restablecimiento de contraseña (RF-64). |
+**No queda ninguna fase del plan.** Lo que sigue abierto, por orden de
+importancia:
+
+| Pendiente | Dónde está descrito |
+|---|---|
+| **Sin SMTP, RF-64 no funciona**: las pantallas están, pero el correo no sale | 6-quinquies |
+| **`EDUCKTRACK_RECUPERACION_URL` sin fijar en Railway** (apunta a localhost) | 6-octies |
+| **V12 a V15 sin aplicar al MySQL real**; nadie ejecuta las migraciones en CI | sección 4 |
+| **Testcontainers**: bloqueado desde la Fase 2 por no haber Docker en la máquina | sección 4 |
+| **El frontend no tiene ninguna prueba automatizada** | 6-octies |
+| **El planificador no soporta varias instancias** (alertas duplicadas) | 6-ter |
+| **La caché de parámetros es por instancia** | 6-septies |
+| **RB-18 detecta cruces por identidad de bloque, no por solapamiento horario** | 6-quater |
+| **HU-03 (matriz de permisos por rol) no existe**: los permisos son anotaciones | 6-bis |
+
 
 ### Decisiones ya tomadas (no volver a discutirlas)
 
@@ -822,6 +903,8 @@ backend/          Spring Boot 3.3.5, Java 21, arquitectura hexagonal por módulo
     <modulo>/infrastructure   persistence (JPA) y rest (controladores)
   src/main/resources/db/migration   Flyway V1..V15
 frontend/         React 18 + Vite + Tailwind, servido por nginx
+  src/pages       login, inicio, boletin, parametros y recuperacion de contrasena
+  src/components  Layout (cabecera y navegacion) y RutaProtegida
 docker-compose.yml   mysql + backend + frontend
 EDUCKTRACK_REQUIREMENTS.md   fuente de verdad (NO TOCAR)
 ```
