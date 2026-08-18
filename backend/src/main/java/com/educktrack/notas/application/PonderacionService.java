@@ -40,6 +40,14 @@ public class PonderacionService {
         if (hayNegativos) {
             throw new ReglaNegocioException("RB-07", "Los porcentajes no pueden ser negativos.");
         }
+        // Un tipo repetido pasa la suma (50+50) pero deja dos filas para el
+        // mismo tipo, y el promedio ponderado lo contaria dos veces: la materia
+        // tendria una ponderacion que no suma 100% en la practica.
+        long tiposDistintos = req.ponderaciones().stream().map(PonderacionItem::tipo).distinct().count();
+        if (tiposDistintos != req.ponderaciones().size()) {
+            throw new ReglaNegocioException("RB-07",
+                    "Cada tipo de evaluacion puede ponderarse una sola vez.");
+        }
 
         // Reemplaza la configuracion previa de la materia/periodo.
         ponderacionRepository.deleteByMateriaIdAndPeriodoAcademicoId(req.materiaId(), req.periodoAcademicoId());

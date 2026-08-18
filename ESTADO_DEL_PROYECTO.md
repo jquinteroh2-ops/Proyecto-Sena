@@ -4,15 +4,15 @@
 > decidió y qué falta, para que el trabajo pueda continuar en otra máquina o en
 > otra sesión sin volver a deducirlo todo.
 >
-> Última actualización: **16 de agosto de 2026**.
+> Última actualización: **18 de agosto de 2026**.
 
 ---
 
 ## 1. Cómo continuar
 
-**La siguiente fase pendiente es la 6 (Reglas académicas).** Las fases 1 a 5
-están cerradas. Lo que quedó deliberadamente fuera está anotado al final de cada
-sección de fase.
+**La siguiente fase pendiente es la 7 (Recuperación de contraseña).** Las fases 1
+a 6 están cerradas. Lo que quedó deliberadamente fuera está anotado al final de
+cada sección de fase.
 
 Antes de tocar nada, leer la sección 2 (reglas absolutas). Y para compilar:
 
@@ -54,10 +54,10 @@ ya funciona.
 
 | | Estado |
 |---|---|
-| Rama de trabajo | `main` (fases 1–5 integradas el 16/08/2026) |
-| Pruebas | **94 en verde** |
-| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría) y 5 (Notificaciones) |
-| Desplegado | Sí, en Railway (ver sección 5) |
+| Rama de trabajo | `fase-6-reglas-academicas` (fases 1–5 integradas en `main` el 16/08/2026) |
+| Pruebas | **110 en verde** |
+| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones) y 6 (Reglas académicas) |
+| Desplegado | Sí, en Railway (ver sección 5). **La Fase 6 aún no se ha desplegado: V12 no se ha aplicado al MySQL real.** |
 
 ### Fase 1 — Identidad (cerrada)
 
@@ -120,7 +120,7 @@ comprobación una vez por nota. Si añades un cálculo masivo, sigue ese patrón
 
 ## 4. Pruebas
 
-64 en verde. Tres piezas que conviene entender antes de tocarlas:
+110 en verde. Piezas que conviene entender antes de tocarlas:
 
 - **`ContextoUsuarioTest`** (20) — la *lógica* de la decisión de acceso, con
   dobles de prueba (Mockito).
@@ -131,7 +131,15 @@ comprobación una vez por nota. Si añades un cálculo masivo, sigue ese patrón
 - **`ContextoDeAplicacionTest`** (1) — `@SpringBootTest` que solo comprueba que
   el contexto se levanta. Red de seguridad barata: la Fase 2 inyectó
   `ContextoUsuario` en siete servicios, y un ciclo de beans o una consulta
-  derivada inválida no rompe la compilación, solo el arranque.
+  derivada inválida no rompe la compilación, solo el arranque. Sigue ganándose el
+  sitio: la Fase 6 hizo que `notas` dependa de `asistencia`, y un ciclo de beans
+  ahí no lo detecta ninguna otra prueba.
+- **`BoletinAcademicoTest`** (6) y **`CargaAcademicaTest`** (4) — las reglas de la
+  Fase 6 (RB-12, RB-04, RB-09) con dobles de prueba.
+- **`ConsultaDeCupoTest`** (2) — la consulta con `@Lock` de RB-17 contra H2. No
+  demuestra la exclusión mutua (haría falta concurrencia real contra MySQL), pero
+  sí que la consulta existe y es JPQL válido, que es donde está el riesgo
+  práctico: un fallo ahí solo aparecería al matricular.
 
 **Perfil `test`** (`src/test/resources/application-test.yml`): Flyway
 desactivado y `ddl-auto: create-drop`, porque las migraciones son específicas de
@@ -400,17 +408,131 @@ defecto es `INTERNO`.
 
 ---
 
+## 6-quater. Fase 6 — Reglas académicas (cerrada)
+
+Repaso de las reglas RB contra `EDUCKTRACK_REQUIREMENTS.md`. El resultado del
+repaso es tan parte de la fase como los cambios: **RB-03, RB-06, RB-10, RB-14,
+RB-15, RB-16, RB-18, RB-19 y RB-20 ya estaban bien implementadas** y no se
+tocaron. Lo que sigue es lo que no lo estaba.
+
+### RB-12 — el boletín no miraba el plan de estudios
+
+El defecto de fondo de la fase. RB-12 dice "promedio igual o superior a 3.0 en
+**todas las materias del plan**", pero el boletín se armaba agrupando las
+calificaciones que existían (`groupingBy` sobre las notas del periodo). Una
+materia del plan **sin ninguna nota registrada** simplemente no aparecía, y por
+tanto no podía impedir la aprobación: el estudiante salía aprobado por las
+materias que alguien alcanzó a calificarle.
+
+Ahora el boletín se arma sobre `plan_estudios` del curso, y cada materia lleva
+`sinCalificar` para distinguir "sacó 0.0" de "no tiene notas". Las notas de
+materias que **ya no figuran en el plan** se conservan a propósito: el plan puede
+cambiar a mitad de periodo y ocultarlas haría desaparecer del boletín
+calificaciones que el estudiante sí tiene.
+
+Esto es además lo que le da contenido a **RB-11**. La inscripción del estudiante
+en las materias del plan es **derivada, no una tabla aparte**: estar matriculado
+en el curso ya significa cursar su plan, y duplicarlo en filas propias abriría la
+posibilidad de que las dos versiones discrepen. `MatriculaService` solo informa
+cuántas son; quien consume la regla es el boletín.
+
+### RB-04 — se informa, no se bloquea (decisión tomada)
+
+La regla dice que quien no alcanza el 80% de asistencia "pierde el derecho a
+evaluación ordinaria". El sistema solo alertaba (RF-30) y nunca aplicaba la
+consecuencia. **Decisión: el boletín marca la pérdida (`pierdeDerechoAEvaluacion`)
+pero no impide registrar la nota.**
+
+El motivo es que el dato es reversible: una justificación que llega tarde
+(RF-27) recalcula el porcentaje hacia arriba, y bloquear el registro convertiría
+un dato reversible en una puerta cerrada que alguien tendría que reabrir a mano.
+Además el proyecto no modela "evaluación extraordinaria", así que un bloqueo
+dejaría al estudiante sin ninguna vía.
+
+`pierdeDerechoAEvaluacion` es información **separada de `aprobada`** a propósito:
+RB-04 y RB-12 responden preguntas distintas, y una nota aprobatoria obtenida sin
+el mínimo de asistencia sigue siendo aprobatoria. Mezclarlas haría imposible
+distinguir a quien perdió la materia de quien perdió la asistencia.
+
+La decisión vive en `AsistenciaService.conservaDerechoAEvaluacion(...)`, que no
+comprueba acceso: sigue el patrón de `calcularPromedio` (ver sección 3) y solo
+debe llamarse desde un método que ya autorizó al solicitante.
+
+### RB-17 — el cupo no era atómico
+
+Mismo patrón TOCTOU que la Fase 3 cerró para RB-01 y RB-05: se contaban las
+matrículas activas y después se insertaba, de modo que dos matrículas simultáneas
+leían el mismo recuento y ambas creían tener el último cupo.
+
+Aquí **no sirve un índice único**: "no más de N filas" no es una regla de
+unicidad y no se puede expresar con una columna generada. Se resuelve
+serializando sobre la fila del curso —`findByIdParaMatricular`, un `SELECT … FOR
+UPDATE` vía `@Lock(PESSIMISTIC_WRITE)`— que mantiene válido el recuento entre la
+comprobación y el `INSERT`.
+
+### RB-09 — no existía (decisión tomada)
+
+`consultarCarga` (RF-15) informaba del total de horas, pero nada validaba ningún
+máximo: RF-14 asignaba materias sin límite. Ahora se comprueba **al asignar**, que
+es el único momento en que la carga crece; informar después sería informar de un
+exceso ya consumado.
+
+El máximo es `educktrack.academico.max-horas-docente` (por defecto 30). Es un
+parámetro institucional y su sitio definitivo es el panel de configuración
+(RF-59, Fase 9); como propiedad aplica la regla hoy, y moverlo a base de datos
+más adelante no obliga a tocar la comprobación. El límite es **inclusivo**: 30
+horas es carga admisible, 31 no.
+
+### RB-07 y RB-03 — dos huecos menores
+
+- **RB-07 admitía el mismo tipo de evaluación repetido.** `EXAMEN 50 + EXAMEN 50`
+  pasaba la suma pero dejaba dos filas del mismo tipo, y el promedio ponderado
+  contaría los exámenes dos veces: la materia se quedaba sin el 100% real que
+  exige la regla. Importa que se rechace **antes** de tocar nada, porque
+  `configurar` borra la ponderación previa: aceptar una entrada mal formada no
+  dejaba la materia con la configuración vieja, sino sin ninguna.
+- **RB-03 estaba duplicada.** `TareaService.calificar` repetía los límites
+  1.0–5.0 en lugar de usar el dominio `Calificacion`, de modo que cambiar la
+  escala habría dejado ese punto de entrada con la escala vieja.
+
+### `app_metadata` eliminada (V12)
+
+Decidido: se borra. Contenía solo las dos filas literales que insertaba la propia
+V1 (`schema_version` = `baseline`, `proyecto` = `EduckTrack`); no estaba mapeada,
+nadie la leía y nadie la escribía. La versión real del esquema la lleva
+`flyway_schema_history`, que es la única fuente de verdad (RS-02).
+
+### Lo que se dejó fuera deliberadamente
+
+- **`calificacion.valor` sigue siendo `DOUBLE`. Decidido: entra en la Fase 8.**
+  Es un refactor transversal (entidad, dominio, DTOs, pruebas y migración) que no
+  aporta ninguna regla académica nueva. **Esta decisión ya no hay que volver a
+  tomarla.**
+- **RB-18 detecta cruces por identidad de bloque, no por solapamiento de horas.**
+  Dos bloques distintos que se solapan en el tiempo (08:00–09:00 y 08:30–09:30 el
+  mismo día y jornada) no se detectan como cruce. Hoy los bloques son ranuras
+  institucionales fijas, así que en la práctica no ocurre; si alguna vez se
+  permite crear bloques libremente, la comprobación debe pasar a comparar rangos.
+- **RF-59 (escala de calificación y % de asistencia configurables por el Rector)
+  sigue sin implementarse.** Son constantes en el código
+  (`Calificacion.NOTA_*`, `AsistenciaService.PORCENTAJE_MINIMO`). Es Fase 9, con
+  el resto del panel de configuración.
+- **El boletín hace N+1 consultas**: por cada materia del plan, promedio,
+  ponderaciones y asistencia. Con un plan de ~10 materias son ~30 consultas por
+  boletín. Material de Fase 8.
+- **V12 no se ha aplicado contra MySQL real.** Es un `DROP TABLE IF EXISTS`, pero
+  las pruebas siguen usando H2 con Flyway desactivado, así que nadie ejecuta las
+  migraciones en CI (ver sección 4).
+
+---
+
 ## 7. Fases restantes
 
 | # | Fase | Notas |
 |---|---|---|
-| 3 | **Migraciones** | Siguiente. Análisis en la sección 6. |
-| 4 | Auditoría | Trazabilidad de quién cambió qué. Hoy solo `novedad_nota` (RB-15) y `cierre_corte` guardan autor. |
-| 5 | Notificaciones por eventos Spring | Hoy `NotificacionService.notificar()` se llama directamente; pasar a eventos de dominio. |
-| 6 | Reglas académicas | Repasar RB-03, RB-04, RB-07, RB-10, RB-12, RB-17 contra los requisitos. |
-| 7 | Recuperación de contraseña | Existe `POST /api/auth/recuperar-password`: verificar si está realmente implementado. |
-| 8 | Rendimiento | Ver la nota de `calcularPromedio` en la sección 3. `ContextoUsuario` consulta el usuario en cada comprobación: hay margen para memorizarlo por petición. |
-| 9 | Limpieza | |
+| 7 | **Recuperación de contraseña** | Siguiente. Existe `POST /api/auth/recuperar-password`: verificar si está realmente implementado. |
+| 8 | Rendimiento | Ver la nota de `calcularPromedio` en la sección 3 y el N+1 del boletín en la 6-quater. `ContextoUsuario` consulta el usuario en cada comprobación: hay margen para memorizarlo por petición. **Aquí entra el paso de `calificacion.valor` a `BigDecimal`/`DECIMAL(3,2)`.** |
+| 9 | Limpieza | Aquí entra el panel de configuración institucional (RF-59): escala de calificación, % mínimo de asistencia y máximo de horas por docente pasan de constantes/propiedades a datos. |
 | 10 | Preparación frontend | El frontend hoy es mínimo: login y pantalla de inicio. |
 
 ### Decisiones ya tomadas (no volver a discutirlas)
@@ -419,6 +541,9 @@ defecto es `INTERNO`.
   marcado como "futura".
 - **"Simulacros" no existe en este proyecto**: venía de otro enunciado.
 - El alcance del docente es el de sus cursos, **no** institucional (Fase 2).
+- **`calificacion.valor` pasa a `BigDecimal` en la Fase 8**, no antes (Fase 6).
+- **RB-04 informa, no bloquea** el registro de notas (Fase 6).
+- **`app_metadata` se elimina** (V12, Fase 6).
 
 ---
 
@@ -430,7 +555,7 @@ backend/          Spring Boot 3.3.5, Java 21, arquitectura hexagonal por módulo
     <modulo>/domain           reglas de negocio puras
     <modulo>/application      casos de uso (aquí vive el control de acceso)
     <modulo>/infrastructure   persistence (JPA) y rest (controladores)
-  src/main/resources/db/migration   Flyway V1..V9
+  src/main/resources/db/migration   Flyway V1..V12
 frontend/         React 18 + Vite + Tailwind, servido por nginx
 docker-compose.yml   mysql + backend + frontend
 EDUCKTRACK_REQUIREMENTS.md   fuente de verdad (NO TOCAR)

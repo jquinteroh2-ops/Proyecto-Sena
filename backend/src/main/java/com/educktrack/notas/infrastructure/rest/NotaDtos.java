@@ -67,7 +67,21 @@ public final class NotaDtos {
     }
 
     // ---------- Boletin (RF-35, RD-11) ----------
-    public record BoletinMateriaDto(Long materiaId, double promedio, boolean aprobada) {
+
+    /**
+     * Materia del boletin. {@code sinCalificar} distingue "sacó 0.0" de "no
+     * tiene ninguna nota registrada": son situaciones distintas para quien lee
+     * el boletin, y ambas cuentan como no aprobada a efectos de RB-12.
+     *
+     * <p>{@code pierdeDerechoAEvaluacion} traslada RB-04 al boletin: el
+     * estudiante no alcanzo el minimo de asistencia en esa materia. Es
+     * informacion aparte de {@code aprobada} a proposito, porque RB-04 y RB-12
+     * responden preguntas distintas: una nota aprobatoria obtenida sin el
+     * minimo de asistencia sigue siendo aprobatoria, y quien lee el boletin
+     * necesita ver las dos cosas para decidir.</p>
+     */
+    public record BoletinMateriaDto(Long materiaId, double promedio, boolean aprobada,
+                                    boolean sinCalificar, boolean pierdeDerechoAEvaluacion) {
     }
 
     public record BoletinDto(

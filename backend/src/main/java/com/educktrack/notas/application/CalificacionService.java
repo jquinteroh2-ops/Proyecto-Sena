@@ -1,7 +1,10 @@
 package com.educktrack.notas.application;
 
+import com.educktrack.asistencia.application.AsistenciaService;
 import com.educktrack.auditoria.application.AuditoriaService;
 import com.educktrack.auditoria.domain.TipoOperacion;
+import com.educktrack.cursos.infrastructure.persistence.PlanEstudiosJpaEntity;
+import com.educktrack.cursos.infrastructure.persistence.PlanEstudiosRepository;
 import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.notas.domain.Calificacion;
 import com.educktrack.notas.domain.TipoEvaluacion;
@@ -29,14 +32,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Casos de uso de calificaciones (RF-31..RF-37). Concentra RB-03 (escala),
- * RB-07 (promedio ponderado), RB-15 (historico inmutable / novedad) y RB-19
- * (cierre de corte bloquea modificaciones y habilita el boletin).
+ * RB-07 (promedio ponderado), RB-12 (aprobacion del periodo sobre el plan
+ * completo), RB-15 (historico inmutable / novedad) y RB-19 (cierre de corte
+ * bloquea modificaciones y habilita el boletin). El boletin ademas traslada
+ * RB-04, que se decide en el modulo de asistencia.
  */
 @Service
 public class CalificacionService {
@@ -45,6 +52,8 @@ public class CalificacionService {
     private final PonderacionRepository ponderacionRepository;
     private final CierreCorteRepository cierreRepository;
     private final NovedadNotaRepository novedadRepository;
+    private final PlanEstudiosRepository planEstudiosRepository;
+    private final AsistenciaService asistencia;
     private final ContextoUsuario contexto;
     private final AuditoriaService auditoria;
     private final ApplicationEventPublisher eventos;
@@ -53,6 +62,8 @@ public class CalificacionService {
                                PonderacionRepository ponderacionRepository,
                                CierreCorteRepository cierreRepository,
                                NovedadNotaRepository novedadRepository,
+                               PlanEstudiosRepository planEstudiosRepository,
+                               AsistenciaService asistencia,
                                ContextoUsuario contexto,
                                AuditoriaService auditoria,
                                ApplicationEventPublisher eventos) {
@@ -60,6 +71,8 @@ public class CalificacionService {
         this.ponderacionRepository = ponderacionRepository;
         this.cierreRepository = cierreRepository;
         this.novedadRepository = novedadRepository;
+        this.planEstudiosRepository = planEstudiosRepository;
+        this.asistencia = asistencia;
         this.contexto = contexto;
         this.auditoria = auditoria;
         this.eventos = eventos;
@@ -229,7 +242,17 @@ public class CalificacionService {
         return dto;
     }
 
-    /** RF-35 / RB-19 / RD-11 / RNF-07: genera el boletin de un estudiante (corte cerrado). */
+    /**
+     * RF-35 / RB-19 / RD-11 / RNF-07: genera el boletin de un estudiante (corte cerrado).
+     *
+     * <p>RB-11 / RB-12: el boletin se arma sobre <strong>el plan de estudios del
+     * curso</strong>, no sobre las materias que resultan tener notas. Matricular
+     * a un estudiante lo inscribe en todas las materias del plan (RB-11), asi
+     * que una materia del plan sin ninguna nota es informacion que falta, no una
+     * materia que no exista: listarla es lo que permite que RB-12 signifique
+     * "aprobo todas las materias del plan" y no "aprobo aquellas en las que
+     * alguien alcanzo a calificarle".</p>
+     */
     @Transactional(readOnly = true)
     public BoletinDto boletin(Long estudianteId, Long cursoId, Long periodoAcademicoId) {
         contexto.exigirAccesoEstudiante(estudianteId);
@@ -243,16 +266,41 @@ public class CalificacionService {
                 .collect(Collectors.groupingBy(CalificacionJpaEntity::getMateriaId));
 
         List<BoletinMateriaDto> materias = new ArrayList<>();
-        for (Map.Entry<Long, List<CalificacionJpaEntity>> entry : porMateria.entrySet()) {
+        for (Long materiaId : materiasDelBoletin(cursoId, porMateria.keySet())) {
+            boolean sinCalificar = !porMateria.containsKey(materiaId);
             // El acceso ya quedo autorizado al entrar al boletin (RNF-07).
-            double prom = calcularPromedio(estudianteId, entry.getKey(), periodoAcademicoId).promedio();
-            materias.add(new BoletinMateriaDto(entry.getKey(), prom, prom >= Calificacion.NOTA_APROBATORIA));
+            double prom = sinCalificar ? 0.0
+                    : calcularPromedio(estudianteId, materiaId, periodoAcademicoId).promedio();
+            // RB-04: el boletin informa de la perdida del derecho a evaluacion
+            // ordinaria, pero no la convierte en reprobacion. Son reglas
+            // distintas y mezclarlas haria imposible distinguir a quien perdio
+            // la materia de quien perdio la asistencia.
+            boolean pierdeDerecho = !asistencia.conservaDerechoAEvaluacion(
+                    estudianteId, materiaId, periodoAcademicoId);
+            materias.add(new BoletinMateriaDto(materiaId, prom,
+                    !sinCalificar && prom >= Calificacion.NOTA_APROBATORIA, sinCalificar, pierdeDerecho));
         }
         double promedioGeneral = redondear(materias.stream()
                 .mapToDouble(BoletinMateriaDto::promedio).average().orElse(0.0));
         // RB-12: aprueba si todas las materias son aprobatorias.
         boolean aprobado = !materias.isEmpty() && materias.stream().allMatch(BoletinMateriaDto::aprobada);
         return new BoletinDto(estudianteId, cursoId, periodoAcademicoId, materias, promedioGeneral, aprobado);
+    }
+
+    /**
+     * Materias que debe listar el boletin: las del plan de estudios del curso
+     * (RB-11) mas cualquier materia con notas que no figure en el plan.
+     *
+     * <p>Esas notas huerfanas se incluyen a proposito. Aparecen cuando el plan
+     * se modifica a mitad de periodo, y ocultarlas haria desaparecer del boletin
+     * notas que el estudiante si tiene. Si el curso no tiene plan definido, el
+     * boletin queda como estaba: solo lo calificado.</p>
+     */
+    private List<Long> materiasDelBoletin(Long cursoId, Set<Long> materiasConNotas) {
+        Set<Long> materias = new LinkedHashSet<>(planEstudiosRepository.findByCursoId(cursoId).stream()
+                .map(PlanEstudiosJpaEntity::getMateriaId).toList());
+        materias.addAll(materiasConNotas);
+        return List.copyOf(materias);
     }
 
     /** RF-37 / RNF-07: historico completo de calificaciones de un estudiante. */

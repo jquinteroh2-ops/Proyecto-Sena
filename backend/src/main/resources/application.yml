@@ -48,6 +48,11 @@ server:
 
 # --- Parametros de aplicacion propios de EduckTrack ---
 educktrack:
+  academico:
+    # RB-09: maximo de horas semanales que se admite asignar a un docente. Es un
+    # parametro institucional; su sitio definitivo es el panel de configuracion
+    # (RF-59), pendiente de la Fase 9. Aqui aplica la regla mientras tanto.
+    max-horas-docente: ${EDUCKTRACK_MAX_HORAS_DOCENTE:30}
   alertas:
     # RF-42 / RF-55: alertas que dependen del calendario. Se revisan una vez al
     # dia a primera hora, antes de la jornada escolar (RNF-11: 6:00 a 18:00).

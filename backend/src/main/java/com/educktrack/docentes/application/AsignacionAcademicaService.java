@@ -16,6 +16,7 @@ import com.educktrack.docentes.infrastructure.rest.AsignacionDtos.CargaAcademica
 import com.educktrack.materias.infrastructure.persistence.MateriaJpaEntity;
 import com.educktrack.materias.infrastructure.persistence.MateriaRepository;
 import com.educktrack.shared.domain.ReglaNegocioException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +24,8 @@ import java.util.List;
 
 /**
  * Casos de uso de asignacion academica de docentes (RF-14, RF-15, RF-16).
- * Aplica RB-16 (materia acorde al area del docente) y RB-02 (director unico).
+ * Aplica RB-16 (materia acorde al area del docente), RB-09 (carga maxima
+ * semanal) y RB-02 (director unico).
  */
 @Service
 public class AsignacionAcademicaService {
@@ -33,14 +35,26 @@ public class AsignacionAcademicaService {
     private final MateriaRepository materiaRepository;
     private final CursoRepository cursoRepository;
 
+    /**
+     * RB-09: maximo de horas semanales que la institucion admite por docente.
+     *
+     * <p>Es un parametro institucional y su sitio natural es el panel de
+     * configuracion (RF-59), que es Fase 9. Hasta entonces vive como propiedad:
+     * un valor configurable aplica la regla hoy, y moverlo a base de datos mas
+     * adelante no obliga a tocar esta comprobacion.</p>
+     */
+    private final int maxHorasSemanales;
+
     public AsignacionAcademicaService(AsignacionDocenteRepository asignacionRepository,
                                       DocenteRepository docenteRepository,
                                       MateriaRepository materiaRepository,
-                                      CursoRepository cursoRepository) {
+                                      CursoRepository cursoRepository,
+                                      @Value("${educktrack.academico.max-horas-docente:30}") int maxHorasSemanales) {
         this.asignacionRepository = asignacionRepository;
         this.docenteRepository = docenteRepository;
         this.materiaRepository = materiaRepository;
         this.cursoRepository = cursoRepository;
+        this.maxHorasSemanales = maxHorasSemanales;
     }
 
     /** RF-14 / RB-16: asigna una materia acorde al area de formacion del docente. */
@@ -64,6 +78,18 @@ public class AsignacionAcademicaService {
         if (asignacionRepository.existsByDocenteIdAndMateriaIdAndCursoIdAndPeriodoAcademicoId(
                 req.docenteId(), req.materiaId(), req.cursoId(), req.periodoAcademicoId())) {
             throw new ReglaNegocioException("RF-14", "La asignacion ya existe.");
+        }
+
+        // RB-09: la nueva materia no puede dejar al docente por encima del
+        // maximo semanal. Se comprueba al asignar y no al consultar la carga
+        // (RF-15) porque asignar es el unico momento en que la carga crece:
+        // avisar despues seria informar de un exceso ya consumado.
+        int horasActuales = consultarCarga(req.docenteId(), req.periodoAcademicoId()).totalHorasSemanales();
+        int horasNuevas = materia.getIntensidadHorariaSemanal();
+        if (horasActuales + horasNuevas > maxHorasSemanales) {
+            throw new ReglaNegocioException("RB-09",
+                    "La asignacion deja al docente en " + (horasActuales + horasNuevas)
+                            + " horas semanales y el maximo institucional es " + maxHorasSemanales + ".");
         }
 
         AsignacionDocenteJpaEntity a = new AsignacionDocenteJpaEntity();
