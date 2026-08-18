@@ -11,6 +11,7 @@ import com.educktrack.matriculas.infrastructure.persistence.MatriculaJpaEntity;
 import com.educktrack.matriculas.infrastructure.persistence.MatriculaRepository;
 import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.notas.application.CalificacionService;
+import com.educktrack.configuracion.application.ParametrosService;
 import com.educktrack.notas.domain.Calificacion;
 import com.educktrack.notas.infrastructure.persistence.CalificacionJpaEntity;
 import com.educktrack.notas.infrastructure.persistence.CalificacionRepository;
@@ -41,6 +42,7 @@ public class ReporteService {
     private final EstudianteRepository estudianteRepository;
     private final CalificacionService calificacionService;
     private final ContextoUsuario contexto;
+    private final ParametrosService parametros;
 
     public ReporteService(CalificacionRepository calificacionRepository,
                           AsistenciaRepository asistenciaRepository,
@@ -48,7 +50,8 @@ public class ReporteService {
                           PlanEstudiosRepository planRepository,
                           EstudianteRepository estudianteRepository,
                           CalificacionService calificacionService,
-                          ContextoUsuario contexto) {
+                          ContextoUsuario contexto,
+                          ParametrosService parametros) {
         this.calificacionRepository = calificacionRepository;
         this.asistenciaRepository = asistenciaRepository;
         this.matriculaRepository = matriculaRepository;
@@ -56,6 +59,7 @@ public class ReporteService {
         this.estudianteRepository = estudianteRepository;
         this.calificacionService = calificacionService;
         this.contexto = contexto;
+        this.parametros = parametros;
     }
 
     /** RF-51 / HU-29: panel de indicadores institucionales. */
@@ -69,7 +73,7 @@ public class ReporteService {
                 CalificacionJpaEntity::getEstudianteId,
                 Collectors.mapping(CalificacionJpaEntity::getValor, Collectors.toList())));
         long enRiesgo = notasPorEstudiante.values().stream()
-                .filter(valores -> !Calificacion.esAprobatoria(mediaDe(valores))).count();
+                .filter(valores -> !parametros.escalaCalificacion().esAprobatoria(mediaDe(valores))).count();
 
         return new PanelIndicadoresDto(promedioGeneral, asistenciaInstitucional().asistenciaPromedio(),
                 enRiesgo, notasPorEstudiante.size());
@@ -117,7 +121,7 @@ public class ReporteService {
         String nombre = estudianteRepository.findById(estudianteId)
                 .map(e -> e.getNombres() + " " + e.getApellidos()).orElse("Estudiante " + estudianteId);
         return new RendimientoEstudianteDto(estudianteId, nombre, promedio,
-                Calificacion.esAprobatoria(promedio));
+                parametros.escalaCalificacion().esAprobatoria(promedio));
     }
 
     /**

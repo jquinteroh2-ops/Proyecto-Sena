@@ -1,5 +1,6 @@
 package com.educktrack.docentes.application;
 
+import com.educktrack.configuracion.application.ParametrosService;
 import com.educktrack.cursos.domain.Curso;
 import com.educktrack.cursos.infrastructure.persistence.CursoJpaEntity;
 import com.educktrack.cursos.infrastructure.persistence.CursoMapper;
@@ -16,7 +17,6 @@ import com.educktrack.docentes.infrastructure.rest.AsignacionDtos.CargaAcademica
 import com.educktrack.materias.infrastructure.persistence.MateriaJpaEntity;
 import com.educktrack.materias.infrastructure.persistence.MateriaRepository;
 import com.educktrack.shared.domain.ReglaNegocioException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,18 +43,18 @@ public class AsignacionAcademicaService {
      * un valor configurable aplica la regla hoy, y moverlo a base de datos mas
      * adelante no obliga a tocar esta comprobacion.</p>
      */
-    private final int maxHorasSemanales;
+    private final ParametrosService parametros;
 
     public AsignacionAcademicaService(AsignacionDocenteRepository asignacionRepository,
                                       DocenteRepository docenteRepository,
                                       MateriaRepository materiaRepository,
                                       CursoRepository cursoRepository,
-                                      @Value("${educktrack.academico.max-horas-docente:30}") int maxHorasSemanales) {
+                                      ParametrosService parametros) {
         this.asignacionRepository = asignacionRepository;
         this.docenteRepository = docenteRepository;
         this.materiaRepository = materiaRepository;
         this.cursoRepository = cursoRepository;
-        this.maxHorasSemanales = maxHorasSemanales;
+        this.parametros = parametros;
     }
 
     /** RF-14 / RB-16: asigna una materia acorde al area de formacion del docente. */
@@ -84,6 +84,7 @@ public class AsignacionAcademicaService {
         // maximo semanal. Se comprueba al asignar y no al consultar la carga
         // (RF-15) porque asignar es el unico momento en que la carga crece:
         // avisar despues seria informar de un exceso ya consumado.
+        int maxHorasSemanales = parametros.maxHorasDocente();
         int horasActuales = consultarCarga(req.docenteId(), req.periodoAcademicoId()).totalHorasSemanales();
         int horasNuevas = materia.getIntensidadHorariaSemanal();
         if (horasActuales + horasNuevas > maxHorasSemanales) {

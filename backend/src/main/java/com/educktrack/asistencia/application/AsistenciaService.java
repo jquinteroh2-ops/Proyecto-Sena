@@ -12,6 +12,7 @@ import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.RegistrarAsi
 import com.educktrack.asistencia.infrastructure.rest.AsistenciaDtos.ReporteAsistenciaDto;
 import com.educktrack.asistencia.domain.evento.EventosDeAsistencia.AsistenciaBajoMinimo;
 import com.educktrack.auditoria.application.AuditoriaService;
+import com.educktrack.configuracion.application.ParametrosService;
 import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.identidad.application.ContextoUsuario;
 import com.educktrack.shared.domain.ReglaNegocioException;
@@ -34,20 +35,20 @@ import java.util.stream.Collectors;
 @Service
 public class AsistenciaService {
 
-    /** RB-04: porcentaje minimo de asistencia para conservar derecho a evaluacion. */
-    public static final double PORCENTAJE_MINIMO = 80.0;
-
     private final AsistenciaRepository asistenciaRepository;
     private final ContextoUsuario contexto;
     private final AuditoriaService auditoria;
     private final ApplicationEventPublisher eventos;
+    private final ParametrosService parametros;
 
     public AsistenciaService(AsistenciaRepository asistenciaRepository, ContextoUsuario contexto,
-                             AuditoriaService auditoria, ApplicationEventPublisher eventos) {
+                             AuditoriaService auditoria, ApplicationEventPublisher eventos,
+                             ParametrosService parametros) {
         this.asistenciaRepository = asistenciaRepository;
         this.contexto = contexto;
         this.auditoria = auditoria;
         this.eventos = eventos;
+        this.parametros = parametros;
     }
 
     /**
@@ -114,7 +115,8 @@ public class AsistenciaService {
 
         porcentajePrevio.forEach((estudianteId, antes) -> {
             double despues = ahora.getOrDefault(estudianteId, 100.0);
-            if (antes >= PORCENTAJE_MINIMO && despues < PORCENTAJE_MINIMO) {
+            double minimo = parametros.porcentajeMinimoAsistencia();
+            if (antes >= minimo && despues < minimo) {
                 eventos.publishEvent(new AsistenciaBajoMinimo(
                         estudianteId, materiaId, periodoAcademicoId, despues));
             }
@@ -181,7 +183,7 @@ public class AsistenciaService {
         List<EstudianteRiesgoDto> enRiesgo = new ArrayList<>();
         porEstudiante.forEach((estId, regs) -> {
             double porcentaje = calcularPorcentaje(regs);
-            if (porcentaje < PORCENTAJE_MINIMO) {
+            if (porcentaje < parametros.porcentajeMinimoAsistencia()) {
                 enRiesgo.add(new EstudianteRiesgoDto(estId, porcentaje));
             }
         });
@@ -207,7 +209,7 @@ public class AsistenciaService {
     public boolean conservaDerechoAEvaluacion(Long estudianteId, Long materiaId, Long periodoAcademicoId) {
         return calcularPorcentaje(asistenciaRepository
                 .findByEstudianteIdAndMateriaIdAndPeriodoAcademicoId(estudianteId, materiaId, periodoAcademicoId))
-                >= PORCENTAJE_MINIMO;
+                >= parametros.porcentajeMinimoAsistencia();
     }
 
     /**
@@ -228,7 +230,7 @@ public class AsistenciaService {
                 .stream()
                 .collect(Collectors.groupingBy(AsistenciaJpaEntity::getMateriaId))
                 .entrySet().stream()
-                .filter(e -> calcularPorcentaje(e.getValue()) < PORCENTAJE_MINIMO)
+                .filter(e -> calcularPorcentaje(e.getValue()) < parametros.porcentajeMinimoAsistencia())
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
     }
@@ -243,7 +245,8 @@ public class AsistenciaService {
                 .filter(r -> r.getEstado() == EstadoAsistencia.AUSENTE && !r.isJustificada()).count();
         double porcentaje = calcularPorcentaje(registros);
         return new ReporteAsistenciaDto(estudianteId, materiaId, periodoId, total, presentes, tardes,
-                ausencias, ausenciasInjustificadas, porcentaje, porcentaje < PORCENTAJE_MINIMO);
+                ausencias, ausenciasInjustificadas, porcentaje,
+                porcentaje < parametros.porcentajeMinimoAsistencia());
     }
 
     /**

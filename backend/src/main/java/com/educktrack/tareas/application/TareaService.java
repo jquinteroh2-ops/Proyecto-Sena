@@ -1,6 +1,7 @@
 package com.educktrack.tareas.application;
 
 import com.educktrack.identidad.application.ContextoUsuario;
+import com.educktrack.configuracion.application.ParametrosService;
 import com.educktrack.notas.domain.Calificacion;
 import com.educktrack.shared.domain.ReglaNegocioException;
 import com.educktrack.tareas.domain.EstadoEntrega;
@@ -33,12 +34,14 @@ public class TareaService {
     private final TareaRepository tareaRepository;
     private final EntregaTareaRepository entregaRepository;
     private final ContextoUsuario contexto;
+    private final ParametrosService parametros;
 
     public TareaService(TareaRepository tareaRepository, EntregaTareaRepository entregaRepository,
-                        ContextoUsuario contexto) {
+                        ContextoUsuario contexto, ParametrosService parametros) {
         this.tareaRepository = tareaRepository;
         this.entregaRepository = entregaRepository;
         this.contexto = contexto;
+        this.parametros = parametros;
     }
 
     /**
@@ -111,7 +114,8 @@ public class TareaService {
         // RB-03: la escala institucional vive en el dominio de notas. Repetir
         // aqui los limites 1.0-5.0 significaba que cambiarla dejaba este punto
         // de entrada con la escala vieja.
-        entrega.setCalificacion(new Calificacion(req.calificacion()).getValor());
+        entrega.setCalificacion(
+                new Calificacion(req.calificacion(), parametros.escalaCalificacion()).getValor());
         entrega.setRetroalimentacion(req.retroalimentacion());
         return toEntregaDto(entregaRepository.save(entrega));
     }

@@ -36,4 +36,15 @@ public interface TokenRecuperacionRepository extends JpaRepository<TokenRecupera
     @Query("update TokenRecuperacionJpaEntity t set t.fechaUso = :momento "
             + "where t.usuarioId = :usuarioId and t.fechaUso is null")
     int invalidarPendientes(Long usuarioId, LocalDateTime momento);
+
+    /**
+     * Elimina los enlaces que caducaron antes de un momento dado.
+     *
+     * <p>El criterio es la <strong>caducidad</strong> y no el uso: un token
+     * gastado sigue siendo util un tiempo para investigar un intento de
+     * reutilizacion, y todos caducan igualmente a los 30 minutos de emitirse.</p>
+     */
+    @Modifying
+    @Query("delete from TokenRecuperacionJpaEntity t where t.fechaExpiracion < :limite")
+    int eliminarCaducadosAnterioresA(LocalDateTime limite);
 }

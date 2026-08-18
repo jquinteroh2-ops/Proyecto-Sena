@@ -6,7 +6,9 @@ import com.educktrack.auditoria.domain.TipoOperacion;
 import com.educktrack.cursos.infrastructure.persistence.PlanEstudiosJpaEntity;
 import com.educktrack.cursos.infrastructure.persistence.PlanEstudiosRepository;
 import com.educktrack.identidad.application.ContextoUsuario;
+import com.educktrack.configuracion.application.ParametrosService;
 import com.educktrack.notas.domain.Calificacion;
+import com.educktrack.notas.domain.EscalaCalificacion;
 import com.educktrack.notas.domain.TipoEvaluacion;
 import com.educktrack.notas.infrastructure.persistence.CalificacionJpaEntity;
 import com.educktrack.notas.infrastructure.persistence.CalificacionRepository;
@@ -56,6 +58,7 @@ public class CalificacionService {
     private final NovedadNotaRepository novedadRepository;
     private final PlanEstudiosRepository planEstudiosRepository;
     private final AsistenciaService asistencia;
+    private final ParametrosService parametros;
     private final ContextoUsuario contexto;
     private final AuditoriaService auditoria;
     private final ApplicationEventPublisher eventos;
@@ -66,6 +69,7 @@ public class CalificacionService {
                                NovedadNotaRepository novedadRepository,
                                PlanEstudiosRepository planEstudiosRepository,
                                AsistenciaService asistencia,
+                               ParametrosService parametros,
                                ContextoUsuario contexto,
                                AuditoriaService auditoria,
                                ApplicationEventPublisher eventos) {
@@ -75,6 +79,7 @@ public class CalificacionService {
         this.novedadRepository = novedadRepository;
         this.planEstudiosRepository = planEstudiosRepository;
         this.asistencia = asistencia;
+        this.parametros = parametros;
         this.contexto = contexto;
         this.auditoria = auditoria;
         this.eventos = eventos;
@@ -91,7 +96,7 @@ public class CalificacionService {
     public CalificacionDto registrar(RegistrarCalificacionRequest req) {
         contexto.exigirGestionMateria(req.cursoId(), req.materiaId());
         exigirCorteAbierto(req.cursoId(), req.periodoAcademicoId());
-        Calificacion nota = new Calificacion(req.valor()); // valida RB-03
+        Calificacion nota = new Calificacion(req.valor(), parametros.escalaCalificacion()); // RB-03
         CalificacionJpaEntity e = new CalificacionJpaEntity();
         e.setEstudianteId(req.estudianteId());
         e.setMateriaId(req.materiaId());
@@ -109,9 +114,9 @@ public class CalificacionService {
                         + guardada.getEstudianteId() + " en la materia " + guardada.getMateriaId()
                         + ", curso " + guardada.getCursoId() + ".");
 
-        // RB-13: el umbral lo evalua este modulo, porque la regla es de
-        // calificaciones; quien escucha decide a quien avisa y con que texto.
-        if (!Calificacion.esAprobatoria(guardada.getValor())) {
+        // RB-13: el umbral lo decide el dominio con la escala vigente; quien
+        // escucha decide a quien avisa y con que texto.
+        if (nota.esBajoRendimiento()) {
             eventos.publishEvent(new NotaBajaRegistrada(
                     guardada.getEstudianteId(), guardada.getMateriaId(), guardada.getCursoId(),
                     guardada.getPeriodoAcademicoId(), guardada.getValor()));
@@ -129,7 +134,7 @@ public class CalificacionService {
                     "El corte esta cerrado; use una novedad de nota para corregir (RF-36).");
         }
         BigDecimal valorAnterior = e.getValor();
-        e.setValor(new Calificacion(nuevoValor).getValor()); // RB-03
+        e.setValor(new Calificacion(nuevoValor, parametros.escalaCalificacion()).getValor()); // RB-03
         CalificacionDto dto = toDto(calificacionRepository.save(e));
 
         // RS-07: el log guarda el valor anterior, porque una nota editada sin
@@ -160,7 +165,7 @@ public class CalificacionService {
                         estudianteId, materiaId, periodoAcademicoId),
                 ponderacionRepository.findByMateriaIdAndPeriodoAcademicoId(materiaId, periodoAcademicoId));
         return new PromedioDto(estudianteId, materiaId, periodoAcademicoId, resultado.promedio(),
-                Calificacion.esAprobatoria(resultado.promedio()),
+                parametros.escalaCalificacion().esAprobatoria(resultado.promedio()),
                 resultado.pendientes(), resultado.detalle());
     }
 
@@ -242,7 +247,7 @@ public class CalificacionService {
                     "La novedad solo aplica a cortes cerrados; edite la nota directamente (RF-32).");
         }
         BigDecimal valorAnterior = e.getValor();
-        BigDecimal valorNuevo = new Calificacion(nuevoValor).getValor(); // RB-03
+        BigDecimal valorNuevo = new Calificacion(nuevoValor, parametros.escalaCalificacion()).getValor(); // RB-03
 
         NovedadNotaJpaEntity n = new NovedadNotaJpaEntity();
         n.setCalificacionId(calificacionId);
@@ -302,6 +307,7 @@ public class CalificacionService {
         Set<Long> sinDerechoAEvaluacion =
                 asistencia.materiasSinDerechoAEvaluacion(estudianteId, periodoAcademicoId);
 
+        EscalaCalificacion escala = parametros.escalaCalificacion();
         List<BoletinMateriaDto> materias = new ArrayList<>();
         for (Long materiaId : materiasDelBoletin) {
             boolean sinCalificar = !porMateria.containsKey(materiaId);
@@ -314,7 +320,7 @@ public class CalificacionService {
             // distintas y mezclarlas haria imposible distinguir a quien perdio
             // la materia de quien perdio la asistencia.
             materias.add(new BoletinMateriaDto(materiaId, prom,
-                    !sinCalificar && Calificacion.esAprobatoria(prom), sinCalificar,
+                    !sinCalificar && escala.esAprobatoria(prom), sinCalificar,
                     sinDerechoAEvaluacion.contains(materiaId)));
         }
         BigDecimal promedioGeneral = redondear(mediaDe(

@@ -70,7 +70,15 @@ public enum TipoOperacion {
     RECUPERACION_FALLIDA,
 
     /** RF-64 / HU-04: contrasena restablecida mediante un enlace valido. */
-    PASSWORD_RESTABLECIDA;
+    PASSWORD_RESTABLECIDA,
+
+    /**
+     * RF-59 / RS-14: cambio de un parametro institucional. Cambiar la escala
+     * recalcula la aprobacion de todo el mundo y cambiar el minimo de
+     * asistencia decide quien pierde el derecho a evaluacion, de modo que es
+     * critico aunque no toque ninguna nota.
+     */
+    PARAMETRO_ACTUALIZADO;
 
     /** RF-05: distingue los eventos de sesion del resto del log. */
     public boolean esAcceso() {
