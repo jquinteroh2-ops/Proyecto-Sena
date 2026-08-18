@@ -1,5 +1,6 @@
 package com.educktrack.docentes.application;
 
+import com.educktrack.configuracion.application.ParametrosService;
 import com.educktrack.cursos.infrastructure.persistence.CursoRepository;
 import com.educktrack.docentes.infrastructure.persistence.AsignacionDocenteJpaEntity;
 import com.educktrack.docentes.infrastructure.persistence.AsignacionDocenteRepository;
@@ -48,15 +49,17 @@ class CargaAcademicaTest {
     @Mock private DocenteRepository docenteRepository;
     @Mock private MateriaRepository materiaRepository;
     @Mock private CursoRepository cursoRepository;
+    @Mock private ParametrosService parametros;
 
     private AsignacionAcademicaService service;
 
     @BeforeEach
     void prepararEscenario() {
-        // El maximo es un parametro (@Value), no un colaborador: se construye a
-        // mano para que la prueba fije el valor en lugar de heredar un 0.
+        // Desde la Fase 9 el maximo es un parametro institucional (RF-59), no
+        // una propiedad del despliegue: lo entrega ParametrosService.
         service = new AsignacionAcademicaService(asignacionRepository, docenteRepository,
-                materiaRepository, cursoRepository, MAX_HORAS);
+                materiaRepository, cursoRepository, parametros);
+        lenient().when(parametros.maxHorasDocente()).thenReturn(MAX_HORAS);
 
         lenient().when(docenteRepository.findById(DOCENTE)).thenReturn(Optional.of(docente()));
         lenient().when(cursoRepository.existsById(CURSO)).thenReturn(true);

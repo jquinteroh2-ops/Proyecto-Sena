@@ -2,9 +2,11 @@ package com.educktrack.notas.application;
 
 import com.educktrack.asistencia.application.AsistenciaService;
 import com.educktrack.auditoria.application.AuditoriaService;
+import com.educktrack.configuracion.application.ParametrosService;
 import com.educktrack.cursos.infrastructure.persistence.PlanEstudiosJpaEntity;
 import com.educktrack.cursos.infrastructure.persistence.PlanEstudiosRepository;
 import com.educktrack.identidad.application.ContextoUsuario;
+import com.educktrack.notas.domain.EscalaCalificacion;
 import com.educktrack.notas.domain.TipoEvaluacion;
 import com.educktrack.notas.infrastructure.persistence.CalificacionJpaEntity;
 import com.educktrack.notas.infrastructure.persistence.CalificacionRepository;
@@ -58,6 +60,7 @@ class BoletinAcademicoTest {
     @Mock private NovedadNotaRepository novedadRepository;
     @Mock private PlanEstudiosRepository planEstudiosRepository;
     @Mock private AsistenciaService asistencia;
+    @Mock private ParametrosService parametros;
     @Mock private ContextoUsuario contexto;
     @Mock private AuditoriaService auditoria;
     @Mock private ApplicationEventPublisher eventos;
@@ -70,6 +73,8 @@ class BoletinAcademicoTest {
         // Sin ponderaciones configuradas el promedio de la materia es simple.
         lenient().when(ponderacionRepository.findByMateriaIdAndPeriodoAcademicoId(any(), any()))
                 .thenReturn(List.of());
+        // RF-59: la escala la fija el Rector; aqui la del enunciado (RD-01).
+        lenient().when(parametros.escalaCalificacion()).thenReturn(EscalaCalificacion.POR_DEFECTO);
         // Salvo que la prueba diga lo contrario, la asistencia esta en regla.
         lenient().when(asistencia.materiasSinDerechoAEvaluacion(any(), any())).thenReturn(java.util.Set.of());
     }

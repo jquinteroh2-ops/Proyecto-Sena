@@ -10,9 +10,9 @@
 
 ## 1. Cómo continuar
 
-**La siguiente fase pendiente es la 9 (Limpieza).** Las fases 1 a 8 están
-cerradas. Lo que quedó deliberadamente fuera está anotado al final de cada
-sección de fase.
+**La siguiente fase pendiente es la 10 (Preparación frontend), la última.** Las
+fases 1 a 9 están cerradas. Lo que quedó deliberadamente fuera está anotado al
+final de cada sección de fase.
 
 Antes de tocar nada, leer la sección 2 (reglas absolutas). Y para compilar:
 
@@ -54,10 +54,10 @@ ya funciona.
 
 | | Estado |
 |---|---|
-| Rama de trabajo | `main` (fases 1–8 integradas el 18/08/2026) |
-| Pruebas | **133 en verde** |
-| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones), 6 (Reglas académicas), 7 (Recuperación de contraseña) y 8 (Rendimiento) |
-| Desplegado | Hasta la Fase 5. **Las fases 6 a 8 no se han desplegado: V12, V13 y V14 no se han aplicado al MySQL real.** |
+| Rama de trabajo | `main` (fases 1–9 integradas el 18/08/2026) |
+| Pruebas | **147 en verde** |
+| Fases cerradas | 1 (Identidad), 2 (Ownership/IDOR), 3 (Migraciones), 4 (Auditoría), 5 (Notificaciones), 6 (Reglas académicas), 7 (Recuperación de contraseña), 8 (Rendimiento) y 9 (Configuración institucional y limpieza) |
+| Desplegado | Hasta la Fase 5. **Las fases 6 a 9 no se han desplegado: V12 a V15 no se han aplicado al MySQL real.** |
 
 ### Fase 1 — Identidad (cerrada)
 
@@ -120,7 +120,7 @@ comprobación una vez por nota. Si añades un cálculo masivo, sigue ese patrón
 
 ## 4. Pruebas
 
-133 en verde. Piezas que conviene entender antes de tocarlas:
+147 en verde. Piezas que conviene entender antes de tocarlas:
 
 - **`ContextoUsuarioTest`** (20) — la *lógica* de la decisión de acceso, con
   dobles de prueba (Mockito).
@@ -143,6 +143,10 @@ comprobación una vez por nota. Si añades un cálculo masivo, sigue ese patrón
 - **`IdentidadDeLaPeticionTest`** (4) — la memorizacion de identidad de la Fase
   8, y sobre todo que **ninguna identidad sobreviva a la limpieza**: es la red
   que protege el aislamiento entre peticiones que comparten hilo.
+- **`ParametrosServiceTest`** (8) y **`EscalaCalificacionTest`** (6) — RF-59.
+  Lo que fijan es que un parametro invalido se rechace **al guardarlo**: un
+  valor imposible no falla donde se escribe sino mucho despues, calificando,
+  y para entonces nadie relaciona el sintoma con el cambio que lo provoco.
 - **`RecuperacionPasswordServiceTest`** (12) — las propiedades de seguridad de
   HU-04: que solicitar no revele si la cuenta existe, que en base de datos quede
   el hash y no el token, que el enlace se consuma una sola vez y que una
@@ -706,12 +710,95 @@ compile`** o directamente `mvn test`, que sí recompila.
 
 ---
 
+## 6-septies. Fase 9 — Configuración institucional y limpieza (cerrada)
+
+### RF-59 — los parámetros dejan de estar en el código
+
+**RF-59 estaba sin implementar.** La escala de calificación (RB-03) eran
+constantes de `Calificacion`, el porcentaje mínimo de asistencia (RB-04) una
+constante de `AsistenciaService`, y el máximo de horas por docente (RB-09) una
+propiedad del despliegue que introdujo la Fase 6. El requisito pide que **los
+defina el Rector desde el sistema**, y cambiarlos exigía recompilar o reiniciar.
+
+Migración **V15**, tabla `parametro_institucional`, y
+`GET`/`PUT /api/configuracion/parametros`.
+
+- **Tabla clave/valor, no una columna por parámetro.** El conjunto crece con el
+  tiempo, y una tabla de una fila con N columnas obliga a una migración por cada
+  parámetro nuevo. El valor va como texto y lo interpreta el servicio, porque los
+  tipos son distintos y una columna por tipo sería peor que convertir en un sitio.
+- **Las claves son un enum cerrado** (`ParametroInstitucional`), igual que
+  `TipoOperacion`: si cualquiera pudiera inventar claves, la tabla acumularía
+  filas que nadie lee. Cada valor declara además su tipo y rango admisible.
+- **V15 siembra los valores que hoy están en el código**, de modo que desplegarla
+  no cambia el comportamiento de nada.
+
+**La escala pasó a ser un dato que se le entrega al dominio.** `Calificacion` ya
+no tiene los límites cableados: recibe una `EscalaCalificacion`, cuyo invariante
+se valida **al construirla**. Una escala imposible (aprobatoria por encima del
+máximo) haría que ninguna nota aprobase nunca, y ese fallo aparecería mucho
+después, calificando, en vez de al guardarla.
+
+Por eso mismo **la escala se valida como conjunto y no parámetro a parámetro**:
+subir la nota aprobatoria a 9.00 es válido mirando solo ese campo y deja un
+colegio donde nadie puede aprobar. `actualizar` construye la escala resultante
+antes de guardar.
+
+**Hay caché, y es deliberado.** La escala se consulta al registrar *cada* nota y
+el mínimo de asistencia al calcular *cada* porcentaje; sin memoria, esta fase
+desharía parte de lo que consiguió la Fase 8. Los parámetros cambian unas pocas
+veces al año, así que se leen una vez y se refrescan al actualizarlos. **La caché
+es por instancia**: con escalado horizontal (RNF-13) un cambio tardaría en verse
+en las demás, igual que el planificador de la Fase 5.
+
+**Si falta una fila, se usa el valor del enunciado en vez de fallar.** Un sistema
+que no arranca porque falta una fila de configuración es peor que uno que arranca
+con el valor por defecto. Lo mismo si la escala guardada resulta inválida: se
+registra el error y se sigue con la del enunciado, porque quedarse sin poder
+calificar es peor que calificar con la escala anterior.
+
+**Permisos:** RF-59 nombra al Rector; el Administrador entra porque sostiene el
+sistema. **Coordinación no**: cambiar la escala altera la aprobación de todo el
+colegio y no es una decisión de gestión diaria. Leerlos sí es abierto, porque el
+frontend necesita la escala para mostrarla.
+
+### Limpieza de enlaces de recuperación caducados
+
+Pendiente de la Fase 7: la tabla solo crecía. `LimpiezaTokensRecuperacion` los
+borra de madrugada, **pero no de inmediato**: se conservan unos días
+(`dias-retencion: 7`) porque un token gastado que reaparece es justo lo que
+interesa poder investigar; borrándolo al usarlo, un intento de reutilización no
+se distinguiría de un token inventado.
+
+A diferencia del planificador de alertas, aquí correr en varias instancias es
+inofensivo: borrar dos veces lo mismo no duplica nada.
+
+### Código muerto retirado
+
+- `Calificacion.getEscala()` no lo usaba nadie: fuera, por la regla de "nada por
+  si acaso".
+- `Calificacion.esBajoRendimiento()` expresaba RB-13 en el dominio pero solo lo
+  usaba su propia prueba, mientras `CalificacionService` repetía la comparación.
+  Ahora el servicio usa el dominio, que es donde vive la regla.
+- La propiedad `educktrack.academico.max-horas-docente` desaparece de
+  `application.yml`, sustituida por el parámetro institucional.
+
+### Lo que queda pendiente
+
+- **No hay pantalla de configuración**: el endpoint existe, la interfaz es Fase 10.
+- **La caché de parámetros es por instancia** (ver arriba).
+- **Cambiar la escala no recalcula lo ya calificado.** Las notas guardadas siguen
+  con su valor; lo que cambia es la comparación de aprobación a partir de
+  entonces. Es lo razonable —una nota de 4.0 sigue siendo 4.0—, pero conviene
+  saberlo antes de cambiar la escala a mitad de año.
+
+---
+
 ## 7. Fases restantes
 
 | # | Fase | Notas |
 |---|---|---|
-| 9 | **Limpieza** | Siguiente. Aquí entra el panel de configuración institucional (RF-59): escala de calificación, % mínimo de asistencia y máximo de horas por docente pasan de constantes/propiedades a datos. También la limpieza de tokens caducados (6-sexies). |
-| 10 | Preparación frontend | El frontend hoy es mínimo: login y pantalla de inicio. |
+| 10 | **Preparación frontend** | Siguiente, y última. El frontend hoy es mínimo: login y pantalla de inicio. Faltan las pantallas de boletín, parámetros institucionales (RF-59) y restablecimiento de contraseña (RF-64). |
 
 ### Decisiones ya tomadas (no volver a discutirlas)
 
@@ -733,7 +820,7 @@ backend/          Spring Boot 3.3.5, Java 21, arquitectura hexagonal por módulo
     <modulo>/domain           reglas de negocio puras
     <modulo>/application      casos de uso (aquí vive el control de acceso)
     <modulo>/infrastructure   persistence (JPA) y rest (controladores)
-  src/main/resources/db/migration   Flyway V1..V14
+  src/main/resources/db/migration   Flyway V1..V15
 frontend/         React 18 + Vite + Tailwind, servido por nginx
 docker-compose.yml   mysql + backend + frontend
 EDUCKTRACK_REQUIREMENTS.md   fuente de verdad (NO TOCAR)
