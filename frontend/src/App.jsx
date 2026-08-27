@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import RutaProtegida from './components/RutaProtegida';
 import Asignaciones from './pages/Asignaciones';
+import Asistencia from './pages/Asistencia';
 import Boletin from './pages/Boletin';
 import Cursos from './pages/Cursos';
+import Estudiantes from './pages/Estudiantes';
 import Horario from './pages/Horario';
 import Inicio from './pages/Inicio';
 import Login from './pages/Login';
@@ -56,6 +58,22 @@ export default function App() {
         element={
           <RutaProtegida>
             <Cursos />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/estudiantes"
+        element={
+          <RutaProtegida>
+            <Estudiantes />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/asistencia"
+        element={
+          <RutaProtegida>
+            <Asistencia />
           </RutaProtegida>
         }
       />

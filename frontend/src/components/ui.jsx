@@ -111,6 +111,33 @@ export function Alerta({ tipo = 'error', children }) {
   );
 }
 
+export function Modal({ titulo, onCerrar, children }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-titulo"
+      onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }}
+    >
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-100 bg-white p-6 shadow-tarjeta">
+        <div className="flex items-center justify-between">
+          <h3 id="modal-titulo" className="text-lg font-semibold text-gray-900">{titulo}</h3>
+          <button
+            type="button"
+            onClick={onCerrar}
+            aria-label="Cerrar"
+            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export function Tarjeta({ children, className = '' }) {
   return (
     <section className={`rounded-2xl border border-gray-100 bg-white p-6 shadow-tarjeta ${className}`}>

@@ -29,13 +29,18 @@ export default function Layout({ children }) {
   const puedeVerReportes =
     roles.includes('COORDINADOR_ACADEMICO') || roles.includes('RECTOR') || roles.includes('ADMINISTRADOR');
   const puedeCargarNotas = roles.includes('DOCENTE') || roles.includes('COORDINADOR_ACADEMICO') || roles.includes('ADMINISTRADOR');
+  const puedeGestionarEstudiantes =
+    roles.includes('COORDINADOR_ACADEMICO') || roles.includes('RECTOR') || roles.includes('ADMINISTRADOR');
+  const puedeRegistrarAsistencia = roles.includes('DOCENTE') || roles.includes('COORDINADOR_ACADEMICO') || roles.includes('ADMINISTRADOR');
 
   const enlaces = [
     { a: '/', texto: 'Inicio', icono: IconoInicio, mostrar: true },
     { a: '/mis-notas', texto: 'Mis notas', icono: IconoGrafico, mostrar: esEstudianteOAcudiente },
     { a: '/boletin', texto: 'Boletín', icono: IconoBoletin, mostrar: true },
+    { a: '/estudiantes', texto: 'Estudiantes', icono: IconoEstudiantes, mostrar: puedeGestionarEstudiantes },
     { a: '/cursos', texto: 'Cursos', icono: IconoCursos, mostrar: tieneVisionAula },
     { a: '/notas', texto: 'Notas', icono: IconoLapiz, mostrar: puedeCargarNotas },
+    { a: '/asistencia', texto: 'Asistencia', icono: IconoAsistencia, mostrar: puedeRegistrarAsistencia },
     { a: '/horario', texto: 'Horario', icono: IconoReloj, mostrar: true },
     { a: '/asignaciones', texto: 'Asignaciones', icono: IconoAsignar, mostrar: puedeGestionarCarga },
     { a: '/reportes', texto: 'Reportes', icono: IconoReportes, mostrar: puedeVerReportes },
@@ -191,6 +196,25 @@ function IconoAjustes(props) {
     <svg {...trazo(props)}>
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9c0 .7.4 1.3 1 1.5h.2a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1 1.5Z" />
+    </svg>
+  );
+}
+function IconoEstudiantes(props) {
+  return (
+    <svg {...trazo(props)}>
+      <circle cx="9" cy="7" r="3" />
+      <path d="M3 20c0-3 2.7-5 6-5s6 2 6 5" />
+      <path d="M16 4.5c1.5.3 2.5 1.5 2.5 3S17.5 10.2 16 10.5" />
+      <path d="M15 20c0-2 1-3.5 3-4" />
+    </svg>
+  );
+}
+function IconoAsistencia(props) {
+  return (
+    <svg {...trazo(props)}>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M8 2v4M16 2v4M4 10h16" />
+      <path d="m9 15 2 2 4-4" />
     </svg>
   );
 }
