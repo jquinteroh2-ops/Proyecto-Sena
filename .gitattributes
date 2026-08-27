@@ -1,0 +1,8 @@
+# Los scripts que corren dentro de contenedores Linux (Dockerfile, entrypoints)
+# deben conservar finales de linea LF sin importar el sistema donde se haga el
+# checkout. Con CRLF, /bin/sh falla al interpretarlos ("line N: : not found")
+# y el contenedor entra en crash-loop -- paso justo lo que rompio el
+# despliegue del frontend el 27/08/2026.
+*.sh text eol=lf
+*.envsh text eol=lf
+Dockerfile text eol=lf
