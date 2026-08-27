@@ -33,3 +33,6 @@ Thumbs.db
 # ---- Docker / datos ----
 mysql-data/
 *.log
+
+# ---- JDK suelto en la raiz del proyecto (no es parte del repo) ----
+/oracleJdk-26/
