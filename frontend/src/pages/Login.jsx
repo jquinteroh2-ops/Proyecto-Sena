@@ -32,7 +32,7 @@ export default function Login() {
       // RNF-10: se muestra el mensaje en espanol que envia el backend (ApiError).
       setError(
         err.response?.data?.mensaje ??
-          'No fue posible conectar con el servidor. Intentelo de nuevo.'
+          'No fue posible conectar con el servidor. Inténtelo de nuevo.'
       );
     } finally {
       setEnviando(false);
@@ -44,7 +44,7 @@ export default function Login() {
       <div className="bg-white shadow-lg rounded-2xl p-8 sm:p-10 w-full max-w-md">
         <header className="text-center">
           <h1 className="text-3xl font-bold text-educk-700">EduckTrack</h1>
-          <p className="mt-1 text-gray-600">Sistema de gestion academica</p>
+          <p className="mt-1 text-gray-600">Sistema de gestión académica</p>
         </header>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
@@ -70,7 +70,7 @@ export default function Login() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-800">
-              Contrasena
+              Contraseña
             </label>
             <input
               id="password"
@@ -99,7 +99,7 @@ export default function Login() {
                        hover:bg-educk-700 focus:outline-none focus:ring-2 focus:ring-educk-500
                        focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {enviando ? 'Verificando...' : 'Iniciar sesion'}
+            {enviando ? 'Verificando...' : 'Iniciar sesión'}
           </button>
 
           {/* RF-64: sin este enlace la recuperacion existia pero no habia por
@@ -108,7 +108,7 @@ export default function Login() {
             to="/recuperar-password"
             className="block text-center text-sm font-medium text-educk-700 hover:underline"
           >
-            Olvide mi contrasena
+            Olvidé mi contraseña
           </Link>
         </form>
       </div>

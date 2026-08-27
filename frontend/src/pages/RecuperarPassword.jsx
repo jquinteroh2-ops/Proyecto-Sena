@@ -27,7 +27,7 @@ export default function RecuperarPassword() {
       // backend no falla por que la cuenta no exista.
       setError(
         err.response?.data?.mensaje ??
-          'No fue posible conectar con el servidor. Intentelo de nuevo.'
+          'No fue posible conectar con el servidor. Inténtelo de nuevo.'
       );
     } finally {
       setEnviando(false);
@@ -39,28 +39,28 @@ export default function RecuperarPassword() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg sm:p-10">
         <header className="text-center">
           <h1 className="text-3xl font-bold text-educk-700">EduckTrack</h1>
-          <p className="mt-1 text-gray-600">Recuperar contrasena</p>
+          <p className="mt-1 text-gray-600">Recuperar contraseña</p>
         </header>
 
         {enviado ? (
           <div className="mt-8 space-y-4">
             <p role="status" className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800">
-              Si el correo esta registrado, recibira un enlace para restablecer
-              la contrasena. El enlace caduca en 30 minutos y solo puede usarse
+              Si el correo está registrado, recibirá un enlace para restablecer
+              la contraseña. El enlace caduca en 30 minutos y solo puede usarse
               una vez.
             </p>
             <Link
               to="/login"
               className="block text-center text-sm font-medium text-educk-700 hover:underline"
             >
-              Volver al inicio de sesion
+              Volver al inicio de sesión
             </Link>
           </div>
         ) : (
           <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
             <p className="text-sm text-gray-600">
               Indique su correo institucional y le enviaremos un enlace para
-              elegir una contrasena nueva.
+              elegir una contraseña nueva.
             </p>
 
             <div>
@@ -102,7 +102,7 @@ export default function RecuperarPassword() {
               to="/login"
               className="block text-center text-sm font-medium text-educk-700 hover:underline"
             >
-              Volver al inicio de sesion
+              Volver al inicio de sesión
             </Link>
           </form>
         )}

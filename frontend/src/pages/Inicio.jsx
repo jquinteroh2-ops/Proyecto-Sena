@@ -30,9 +30,9 @@ export default function Inicio() {
           backend pero no habia pantalla. */}
       {usuario?.debeCambiarPassword && (
         <p className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Esta usando una contrasena inicial.{' '}
+          Está usando una contraseña inicial.{' '}
           <Link to="/recuperar-password" className="font-semibold underline">
-            Cambiela ahora
+            Cámbiela ahora
           </Link>{' '}
           para asegurar su cuenta.
         </p>
@@ -56,7 +56,7 @@ export default function Inicio() {
             <Dato etiqueta="Correo" valor={identidad.correo} />
             <Dato etiqueta="Roles" valor={identidad.roles.join(', ') || '-'} />
             <Dato
-              etiqueta="Perfil academico"
+              etiqueta="Perfil académico"
               valor={
                 identidad.estudianteId
                   ? `Estudiante #${identidad.estudianteId}`
@@ -78,14 +78,14 @@ export default function Inicio() {
       <section className="mt-6 grid gap-4 sm:grid-cols-2">
         <Tarjeta
           a="/boletin"
-          titulo="Boletin de calificaciones"
-          descripcion="Consulte el boletin de un periodo cerrado (RF-35)."
+          titulo="Boletín de calificaciones"
+          descripcion="Consulte el boletín de un periodo cerrado (RF-35)."
         />
         {(usuario?.roles ?? []).some((r) => r === 'RECTOR' || r === 'ADMINISTRADOR') && (
           <Tarjeta
             a="/parametros"
-            titulo="Parametros institucionales"
-            descripcion="Escala de calificacion y minimos institucionales (RF-59)."
+            titulo="Parámetros institucionales"
+            descripcion="Escala de calificación y mínimos institucionales (RF-59)."
           />
         )}
       </section>

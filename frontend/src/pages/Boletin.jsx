@@ -58,7 +58,7 @@ export default function Boletin() {
       // del backend (RNF-10) en vez de interpretarlo.
       setError(
         err.response?.data?.mensaje ??
-          'No fue posible generar el boletin. Verifique los datos e intentelo de nuevo.'
+          'No fue posible generar el boletín. Verifique los datos e inténtelo de nuevo.'
       );
     } finally {
       setCargando(false);
@@ -67,9 +67,9 @@ export default function Boletin() {
 
   return (
     <Layout>
-      <h2 className="text-2xl font-semibold text-gray-900">Boletin de calificaciones</h2>
+      <h2 className="text-2xl font-semibold text-gray-900">Boletín de calificaciones</h2>
       <p className="mt-1 text-sm text-gray-600">
-        El boletin solo puede generarse cuando coordinacion ha cerrado el corte
+        El boletín solo puede generarse cuando coordinación ha cerrado el corte
         del curso (RB-19).
       </p>
 
@@ -107,7 +107,7 @@ export default function Boletin() {
             <Numero id="cursoId" valor={cursoId} onChange={setCursoId} />
           </Campo>
 
-          <Campo etiqueta="Periodo academico" htmlFor="periodoId">
+          <Campo etiqueta="Periodo académico" htmlFor="periodoId">
             <Numero id="periodoId" valor={periodoId} onChange={setPeriodoId} />
           </Campo>
         </div>
@@ -119,7 +119,7 @@ export default function Boletin() {
                      hover:bg-educk-700 focus:outline-none focus:ring-2 focus:ring-educk-500
                      focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {cargando ? 'Generando...' : 'Generar boletin'}
+          {cargando ? 'Generando...' : 'Generar boletín'}
         </button>
       </form>
 
@@ -143,7 +143,7 @@ function TablaBoletin({ boletin }) {
             Estudiante #{boletin.estudianteId}
           </h3>
           <p className="text-sm text-gray-600">
-            Curso #{boletin.cursoId} - Periodo #{boletin.periodoAcademicoId}
+            Curso #{boletin.cursoId} - Período #{boletin.periodoAcademicoId}
           </p>
         </div>
         {/* RB-12: la aprobacion del periodo exige TODAS las materias del plan. */}
@@ -193,7 +193,7 @@ function TablaBoletin({ boletin }) {
                     {/* RB-04: se informa, no reprueba. Por eso es una etiqueta
                         aparte y no sustituye al estado de la materia. */}
                     {m.pierdeDerechoAEvaluacion && (
-                      <Etiqueta tono="ambar">Sin derecho a evaluacion</Etiqueta>
+                      <Etiqueta tono="ambar">Sin derecho a evaluación</Etiqueta>
                     )}
                   </div>
                 </td>
@@ -212,9 +212,9 @@ function TablaBoletin({ boletin }) {
 
       {boletin.materias.some((m) => m.pierdeDerechoAEvaluacion) && (
         <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          Las materias marcadas no alcanzaron el minimo de asistencia
-          institucional (RB-04). La nota obtenida sigue siendo valida; la perdida
-          del derecho a evaluacion ordinaria se gestiona con coordinacion.
+          Las materias marcadas no alcanzaron el mínimo de asistencia
+          institucional (RB-04). La nota obtenida sigue siendo válida; la pérdida
+          del derecho a evaluación ordinaria se gestiona con coordinación.
         </p>
       )}
     </section>

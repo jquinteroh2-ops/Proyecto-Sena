@@ -11,18 +11,18 @@ import Layout from '../components/Layout';
 // nota de 4.0 sigue siendo 4.0, lo que cambia es la comparacion de aprobacion a
 // partir de entonces.
 const DESCRIPCIONES = {
-  NOTA_MINIMA: 'Extremo inferior de la escala de calificacion (RB-03).',
-  NOTA_MAXIMA: 'Extremo superior de la escala de calificacion (RB-03).',
+  NOTA_MINIMA: 'Extremo inferior de la escala de calificación (RB-03).',
+  NOTA_MAXIMA: 'Extremo superior de la escala de calificación (RB-03).',
   NOTA_APROBATORIA: 'Nota a partir de la cual se aprueba una materia (RB-12).',
   PORCENTAJE_MINIMO_ASISTENCIA:
-    'Asistencia minima para conservar el derecho a evaluacion ordinaria (RB-04).',
-  MAX_HORAS_DOCENTE: 'Maximo de horas semanales asignables a un docente (RB-09).',
+    'Asistencia mínima para conservar el derecho a evaluación ordinaria (RB-04).',
+  MAX_HORAS_DOCENTE: 'Máximo de horas semanales asignables a un docente (RB-09).',
 };
 
 const AYUDA_TIPO = {
-  DECIMAL: 'Numero mayor que cero, con decimales.',
-  PORCENTAJE: 'Numero entero entre 0 y 100.',
-  ENTERO_POSITIVO: 'Numero entero mayor que cero.',
+  DECIMAL: 'Número mayor que cero, con decimales.',
+  PORCENTAJE: 'Número entero entre 0 y 100.',
+  ENTERO_POSITIVO: 'Número entero mayor que cero.',
 };
 
 export default function Parametros() {
@@ -47,7 +47,7 @@ export default function Parametros() {
       })
       .catch((err) =>
         setError(
-          err.response?.data?.mensaje ?? 'No fue posible consultar los parametros.'
+          err.response?.data?.mensaje ?? 'No fue posible consultar los parámetros.'
         )
       )
       .finally(() => setCargando(false));
@@ -63,13 +63,13 @@ export default function Parametros() {
       });
       setParametros(data);
       setBorradores(Object.fromEntries(data.map((p) => [p.clave, p.valor])));
-      setAviso(`Parametro ${clave} actualizado.`);
+      setAviso(`Parámetro ${clave} actualizado.`);
     } catch (err) {
       // El backend valida el tipo, el rango y ademas la escala como conjunto:
       // subir la nota aprobatoria por encima del maximo deja una escala en la
       // que nadie puede aprobar. Aqui solo se muestra su mensaje (RNF-10).
       setError(
-        err.response?.data?.mensaje ?? 'No fue posible actualizar el parametro.'
+        err.response?.data?.mensaje ?? 'No fue posible actualizar el parámetro.'
       );
       // Se devuelve el borrador al valor vigente para no dejar en pantalla un
       // numero que el servidor rechazo, como si estuviera guardado.
@@ -82,11 +82,11 @@ export default function Parametros() {
 
   return (
     <Layout>
-      <h2 className="text-2xl font-semibold text-gray-900">Parametros institucionales</h2>
+      <h2 className="text-2xl font-semibold text-gray-900">Parámetros institucionales</h2>
       <p className="mt-1 text-sm text-gray-600">
-        Definen la escala de calificacion y los minimos institucionales. Un
-        cambio aqui afecta a todo el colegio y queda registrado en el log de
-        auditoria (RS-07).
+        Definen la escala de calificación y los mínimos institucionales. Un
+        cambio aquí afecta a todo el colegio y queda registrado en el log de
+        auditoría (RS-07).
       </p>
 
       {error && (

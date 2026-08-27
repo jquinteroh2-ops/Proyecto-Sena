@@ -29,7 +29,7 @@ export default function RestablecerPassword() {
     // de tecleo, no una regla de negocio: enviarlo gastaria el enlace, que es de
     // un solo uso, por haber escrito mal la contrasena dos veces.
     if (password !== confirmacion) {
-      setError('Las dos contrasenas no coinciden.');
+      setError('Las dos contraseñas no coinciden.');
       return;
     }
 
@@ -42,7 +42,7 @@ export default function RestablecerPassword() {
       // backend; aqui solo se muestra su mensaje (RNF-10).
       setError(
         err.response?.data?.mensaje ??
-          'No fue posible conectar con el servidor. Intentelo de nuevo.'
+          'No fue posible conectar con el servidor. Inténtelo de nuevo.'
       );
     } finally {
       setEnviando(false);
@@ -54,7 +54,7 @@ export default function RestablecerPassword() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg sm:p-10">
         <header className="text-center">
           <h1 className="text-3xl font-bold text-educk-700">EduckTrack</h1>
-          <p className="mt-1 text-gray-600">Nueva contrasena</p>
+          <p className="mt-1 text-gray-600">Nueva contraseña</p>
         </header>
 
         {!token ? (
@@ -62,8 +62,8 @@ export default function RestablecerPassword() {
           // enlace. Sin esto el formulario se enviaria para fallar despues.
           <div className="mt-8 space-y-4">
             <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-              Este enlace no es valido. Solicite uno nuevo desde la pantalla de
-              recuperacion.
+              Este enlace no es válido. Solicite uno nuevo desde la pantalla de
+              recuperación.
             </p>
             <Link
               to="/recuperar-password"
@@ -75,7 +75,7 @@ export default function RestablecerPassword() {
         ) : listo ? (
           <div className="mt-8 space-y-4">
             <p role="status" className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800">
-              Contrasena actualizada correctamente. Ya puede iniciar sesion.
+              Contraseña actualizada correctamente. Ya puede iniciar sesión.
             </p>
             <button
               type="button"
@@ -84,14 +84,14 @@ export default function RestablecerPassword() {
                          hover:bg-educk-700 focus:outline-none focus:ring-2 focus:ring-educk-500
                          focus:ring-offset-2"
             >
-              Ir al inicio de sesion
+              Ir al inicio de sesión
             </button>
           </div>
         ) : (
           <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-800">
-                Nueva contrasena
+                Nueva contraseña
               </label>
               <input
                 id="password"
@@ -114,7 +114,7 @@ export default function RestablecerPassword() {
 
             <div>
               <label htmlFor="confirmacion" className="block text-sm font-medium text-gray-800">
-                Repita la contrasena
+                Repita la contraseña
               </label>
               <input
                 id="confirmacion"
@@ -142,7 +142,7 @@ export default function RestablecerPassword() {
                          hover:bg-educk-700 focus:outline-none focus:ring-2 focus:ring-educk-500
                          focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {enviando ? 'Guardando...' : 'Cambiar contrasena'}
+              {enviando ? 'Guardando...' : 'Cambiar contraseña'}
             </button>
           </form>
         )}

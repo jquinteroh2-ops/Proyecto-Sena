@@ -42,11 +42,11 @@ export default function Layout({ children }) {
                 Inicio
               </Enlace>
               <Enlace a="/boletin" actual={pathname}>
-                Boletin
+                Boletín
               </Enlace>
               {esRectorOAdmin && (
                 <Enlace a="/parametros" actual={pathname}>
-                  Parametros
+                  Parámetros
                 </Enlace>
               )}
             </nav>
@@ -60,7 +60,7 @@ export default function Layout({ children }) {
               className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-800
                          hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-educk-500"
             >
-              Cerrar sesion
+              Cerrar sesión
             </button>
           </div>
         </div>
