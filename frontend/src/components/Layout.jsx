@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 
-// Marco comun de las pantallas con sesion: cabecera, navegacion y cierre de
-// sesion (RF-61). Existe desde la Fase 10 porque al pasar de una pantalla a
-// cuatro, repetir la cabecera en cada una garantizaba que se fueran separando.
-// Rediseñada cuando el numero de secciones crecio a nueve: la navegacion pasa
-// a pildoras con icono para que siga siendo legible sin ocupar dos filas.
+// Marco comun de las pantallas con sesion: barra lateral, cabecera y cierre
+// de sesion (RF-61). Paso de menu superior a barra lateral colapsable cuando
+// el numero de secciones crecio a nueve: en pantalla reducida, un menu
+// horizontal con nueve pildoras se envuelve en varias filas y empuja el
+// contenido; una barra lateral que se colapsa a solo iconos resuelve el
+// mismo problema de espacio sin perder ningun enlace.
 //
 // DECISION DE DISENO: la navegacion se filtra por rol solo para no ofrecer
 // enlaces que van a devolver 403. No es control de acceso: igual que
@@ -16,6 +18,9 @@ export default function Layout({ children }) {
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+
+  const [colapsada, setColapsada] = useState(false);
+  const [abiertaMovil, setAbiertaMovil] = useState(false);
 
   const roles = usuario?.roles ?? [];
   const esRectorOAdmin = roles.includes('RECTOR') || roles.includes('ADMINISTRADOR');
@@ -66,20 +71,70 @@ export default function Layout({ children }) {
     .toUpperCase();
 
   return (
-    <div className="fondo-educktrack min-h-screen">
-      <header className="sticky top-0 z-10 border-b border-white/60 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-marca text-base font-extrabold text-white shadow-suave">
-                E
-              </span>
-              <span className="text-lg font-extrabold tracking-tight text-gray-900">
-                Educk<span className="text-educk-600">Track</span>
-              </span>
-            </Link>
+    <div className="fondo-educktrack flex min-h-screen">
+      {/* Fondo oscuro detras del drawer movil; cierra al tocarlo fuera. */}
+      {abiertaMovil && (
+        <div
+          className="fixed inset-0 z-30 bg-gray-900/50 md:hidden"
+          onClick={() => setAbiertaMovil(false)}
+        />
+      )}
 
-            <div className="flex items-center gap-3">
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-gray-100 bg-white transition-all
+                    duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0
+                    ${colapsada ? 'w-[76px]' : 'w-64'}
+                    ${abiertaMovil ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+      >
+        <div className="flex items-center gap-2.5 border-b border-gray-100 px-4 py-4">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-marca text-base font-extrabold text-white shadow-suave">
+            E
+          </span>
+          {!colapsada && (
+            <span className="truncate text-lg font-extrabold tracking-tight text-gray-900">
+              Educk<span className="text-educk-600">Track</span>
+            </span>
+          )}
+        </div>
+
+        <nav aria-label="Secciones" className="flex-1 space-y-1 overflow-y-auto px-2.5 py-4">
+          {enlaces.map(({ a, texto, icono: Icono }) => (
+            <EnlaceLateral key={a} a={a} actual={pathname} colapsada={colapsada} onClick={() => setAbiertaMovil(false)}>
+              <Icono className="h-5 w-5 shrink-0" />
+              {!colapsada && <span className="truncate">{texto}</span>}
+            </EnlaceLateral>
+          ))}
+        </nav>
+
+        <div className="border-t border-gray-100 p-2.5">
+          <button
+            type="button"
+            onClick={() => setColapsada((c) => !c)}
+            aria-label={colapsada ? 'Expandir barra lateral' : 'Colapsar barra lateral'}
+            className="hidden w-full items-center justify-center rounded-lg py-2 text-gray-500 hover:bg-gray-100 md:flex"
+          >
+            <IconoColapsar className={`h-5 w-5 transition-transform ${colapsada ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 border-b border-white/60 bg-white/80 backdrop-blur-md">
+          <div className="flex items-center justify-between gap-4 px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setAbiertaMovil(true)}
+              aria-label="Abrir menú"
+              className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 md:hidden"
+            >
+              <IconoMenu className="h-6 w-6" />
+            </button>
+
+            <span className="hidden text-sm font-medium text-gray-700 sm:block md:hidden">
+              {enlaces.find((e) => e.a === pathname)?.texto ?? 'EduckTrack'}
+            </span>
+
+            <div className="ml-auto flex items-center gap-3">
               <span className="hidden text-sm text-gray-600 sm:inline">{usuario?.correo}</span>
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-educk-100 text-sm font-bold text-educk-700">
                 {iniciales}
@@ -95,33 +150,26 @@ export default function Layout({ children }) {
               </button>
             </div>
           </div>
+        </header>
 
-          <nav aria-label="Secciones" className="mt-3 flex flex-wrap gap-1.5">
-            {enlaces.map(({ a, texto, icono: Icono }) => (
-              <Enlace key={a} a={a} actual={pathname}>
-                <Icono className="h-4 w-4" />
-                {texto}
-              </Enlace>
-            ))}
-          </nav>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
+      </div>
     </div>
   );
 }
 
-function Enlace({ a, actual, children }) {
+function EnlaceLateral({ a, actual, colapsada, children, onClick }) {
   const activo = actual === a;
   return (
     <Link
       to={a}
+      onClick={onClick}
       aria-current={activo ? 'page' : undefined}
+      title={colapsada ? undefined : undefined}
       className={
         activo
-          ? 'flex items-center gap-1.5 rounded-full bg-educk-600 px-3 py-1.5 text-sm font-semibold text-white shadow-suave'
-          : 'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          ? 'flex items-center gap-3 rounded-xl bg-educk-600 px-3 py-2.5 text-sm font-semibold text-white shadow-suave'
+          : 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900'
       }
     >
       {children}
@@ -135,6 +183,21 @@ function trazo(props) {
   return { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', viewBox: '0 0 24 24', ...props };
 }
 
+function IconoMenu(props) {
+  return (
+    <svg {...trazo(props)}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+function IconoColapsar(props) {
+  return (
+    <svg {...trazo(props)}>
+      <path d="M15 6l-6 6 6 6" />
+      <path d="M4 5v14" />
+    </svg>
+  );
+}
 function IconoInicio(props) {
   return (
     <svg {...trazo(props)}>
@@ -199,6 +262,14 @@ function IconoAjustes(props) {
     </svg>
   );
 }
+function IconoGrafico(props) {
+  return (
+    <svg {...trazo(props)}>
+      <path d="M3 17l5-5 4 4 8-8" />
+      <path d="M15 8h5v5" />
+    </svg>
+  );
+}
 function IconoEstudiantes(props) {
   return (
     <svg {...trazo(props)}>
@@ -215,14 +286,6 @@ function IconoAsistencia(props) {
       <rect x="4" y="4" width="16" height="16" rx="2" />
       <path d="M8 2v4M16 2v4M4 10h16" />
       <path d="m9 15 2 2 4-4" />
-    </svg>
-  );
-}
-function IconoGrafico(props) {
-  return (
-    <svg {...trazo(props)}>
-      <path d="M3 17l5-5 4 4 8-8" />
-      <path d="M15 8h5v5" />
     </svg>
   );
 }
