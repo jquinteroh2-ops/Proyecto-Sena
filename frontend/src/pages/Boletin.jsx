@@ -48,7 +48,7 @@ export default function Boletin() {
     setBoletin(null);
     setCargando(true);
     try {
-      const { data } = await api.get('/notas/boletin', {
+      const { data } = await api.get('/calificaciones/boletin', {
         params: { estudianteId, cursoId, periodoAcademicoId: periodoId },
       });
       setBoletin(data);
@@ -73,7 +73,7 @@ export default function Boletin() {
         del curso (RB-19).
       </p>
 
-      <form onSubmit={consultar} className="mt-6 rounded-2xl bg-white p-6 shadow">
+      <form onSubmit={consultar} className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-tarjeta">
         <div className="grid gap-4 sm:grid-cols-3">
           {esEstudiante ? (
             <Campo etiqueta="Estudiante">
@@ -115,8 +115,8 @@ export default function Boletin() {
         <button
           type="submit"
           disabled={cargando}
-          className="mt-5 rounded-lg bg-educk-600 px-4 py-2.5 font-semibold text-white
-                     hover:bg-educk-700 focus:outline-none focus:ring-2 focus:ring-educk-500
+          className="mt-5 rounded-xl bg-marca px-4 py-2.5 font-semibold text-white shadow-suave transition
+                     hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-educk-500
                      focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {cargando ? 'Generando...' : 'Generar boletín'}
@@ -136,7 +136,7 @@ export default function Boletin() {
 
 function TablaBoletin({ boletin }) {
   return (
-    <section className="mt-6 rounded-2xl bg-white p-6 shadow">
+    <section className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-tarjeta">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">

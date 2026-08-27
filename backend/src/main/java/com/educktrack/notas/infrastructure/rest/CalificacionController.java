@@ -37,7 +37,8 @@ public class CalificacionController {
 
     private static final String DOCENTE = "hasAnyRole('DOCENTE','COORDINADOR_ACADEMICO','ADMINISTRADOR')";
     private static final String COORDINADOR = "hasAnyRole('COORDINADOR_ACADEMICO','ADMINISTRADOR')";
-    private static final String CONSULTA = "hasAnyRole('DOCENTE','COORDINADOR_ACADEMICO','RECTOR','ADMINISTRADOR')";
+    private static final String CONSULTA =
+            "hasAnyRole('ESTUDIANTE','PADRE_FAMILIA','DOCENTE','COORDINADOR_ACADEMICO','RECTOR','ADMINISTRADOR')";
 
     private final CalificacionService service;
 

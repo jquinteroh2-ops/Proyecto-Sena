@@ -107,7 +107,7 @@ export default function Parametros() {
           {parametros.map((p) => {
             const sinGuardar = borradores[p.clave] !== p.valor;
             return (
-              <li key={p.clave} className="rounded-2xl bg-white p-6 shadow">
+              <li key={p.clave} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-tarjeta">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <label
@@ -145,7 +145,7 @@ export default function Parametros() {
                       type="button"
                       onClick={() => guardar(p.clave)}
                       disabled={!sinGuardar || guardando === p.clave}
-                      className="rounded-lg bg-educk-600 px-4 py-2 text-sm font-semibold text-white
+                      className="rounded-xl bg-marca px-4 py-2 text-sm font-semibold text-white shadow-suave transition
                                  hover:bg-educk-700 focus:outline-none focus:ring-2
                                  focus:ring-educk-500 focus:ring-offset-2
                                  disabled:cursor-not-allowed disabled:opacity-40"

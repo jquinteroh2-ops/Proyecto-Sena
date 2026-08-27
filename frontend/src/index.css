@@ -3,5 +3,22 @@
 @tailwind utilities;
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+body {
+  background: #f4f6fb;
+}
+
+/* Textura sutil en el fondo de las pantallas con sesion: un radial-gradient
+   muy tenue en la esquina superior, para que el fondo no sea un gris plano. */
+.fondo-educktrack {
+  background-color: #f4f6fb;
+  background-image:
+    radial-gradient(1200px circle at 0% 0%, rgba(37, 99, 235, 0.07), transparent 40%),
+    radial-gradient(900px circle at 100% 0%, rgba(124, 58, 237, 0.06), transparent 45%);
+}
+
+::selection {
+  background: #bfdbfe;
 }

@@ -40,14 +40,40 @@ export default function Login() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-educk-50 px-4 py-8">
-      <div className="bg-white shadow-lg rounded-2xl p-8 sm:p-10 w-full max-w-md">
-        <header className="text-center">
-          <h1 className="text-3xl font-bold text-educk-700">EduckTrack</h1>
-          <p className="mt-1 text-gray-600">Sistema de gestión académica</p>
-        </header>
+    <main className="fondo-educktrack relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8">
+      {/* Panel de marca: solo visible desde sm, para no restar espacio al
+          formulario en movil. Puramente decorativo, no lleva contenido que la
+          pantalla necesite para funcionar. */}
+      <div className="pointer-events-none absolute inset-0 hidden sm:block">
+        <div className="absolute -left-24 top-1/2 h-[32rem] w-[32rem] -translate-y-1/2 rounded-full bg-marca opacity-[0.07] blur-3xl" />
+      </div>
 
-        <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+      <div className="relative grid w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-tarjeta sm:grid-cols-2">
+        <div className="hidden flex-col justify-between bg-marca p-10 text-white sm:flex">
+          <div>
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-lg font-extrabold ring-1 ring-white/25">
+              E
+            </span>
+            <h1 className="mt-6 text-3xl font-extrabold leading-tight">
+              Educk<span className="text-white/70">Track</span>
+            </h1>
+            <p className="mt-3 max-w-xs text-sm text-white/80">
+              Notas, horarios, asignaciones y reportes de todo el colegio en un
+              solo lugar.
+            </p>
+          </div>
+          <p className="text-xs text-white/60">Sistema de gestión académica</p>
+        </div>
+
+        <div className="p-8 sm:p-10">
+          <header className="sm:hidden">
+            <h1 className="text-2xl font-extrabold text-educk-700">EduckTrack</h1>
+            <p className="mt-1 text-sm text-gray-600">Sistema de gestión académica</p>
+          </header>
+          <h2 className="hidden text-xl font-bold text-gray-900 sm:block">Inicia sesión</h2>
+          <p className="mt-1 hidden text-sm text-gray-500 sm:block">Ingresa con tu cuenta institucional.</p>
+
+        <form onSubmit={onSubmit} className="mt-6 space-y-5 sm:mt-8" noValidate>
           <div>
             {/* RNF-22: etiquetas semanticas asociadas al control. */}
             <label htmlFor="correo" className="block text-sm font-medium text-gray-800">
@@ -95,9 +121,9 @@ export default function Login() {
           <button
             type="submit"
             disabled={enviando}
-            className="w-full rounded-lg bg-educk-600 px-4 py-2.5 font-semibold text-white
-                       hover:bg-educk-700 focus:outline-none focus:ring-2 focus:ring-educk-500
-                       focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-marca px-4 py-2.5 font-semibold text-white shadow-suave
+                       transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-educk-500
+                       focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:brightness-100"
           >
             {enviando ? 'Verificando...' : 'Iniciar sesión'}
           </button>
@@ -111,6 +137,7 @@ export default function Login() {
             Olvidé mi contraseña
           </Link>
         </form>
+        </div>
       </div>
     </main>
   );

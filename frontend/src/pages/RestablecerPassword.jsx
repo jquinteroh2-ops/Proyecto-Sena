@@ -50,8 +50,8 @@ export default function RestablecerPassword() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-educk-50 px-4 py-8">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg sm:p-10">
+    <main className="fondo-educktrack flex min-h-screen items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-8 shadow-tarjeta sm:p-10">
         <header className="text-center">
           <h1 className="text-3xl font-bold text-educk-700">EduckTrack</h1>
           <p className="mt-1 text-gray-600">Nueva contraseña</p>
@@ -80,8 +80,8 @@ export default function RestablecerPassword() {
             <button
               type="button"
               onClick={() => navigate('/login', { replace: true })}
-              className="w-full rounded-lg bg-educk-600 px-4 py-2.5 font-semibold text-white
-                         hover:bg-educk-700 focus:outline-none focus:ring-2 focus:ring-educk-500
+              className="w-full rounded-xl bg-marca px-4 py-2.5 font-semibold text-white shadow-suave transition
+                         hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-educk-500
                          focus:ring-offset-2"
             >
               Ir al inicio de sesión
@@ -138,8 +138,8 @@ export default function RestablecerPassword() {
             <button
               type="submit"
               disabled={enviando}
-              className="w-full rounded-lg bg-educk-600 px-4 py-2.5 font-semibold text-white
-                         hover:bg-educk-700 focus:outline-none focus:ring-2 focus:ring-educk-500
+              className="w-full rounded-xl bg-marca px-4 py-2.5 font-semibold text-white shadow-suave transition
+                         hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-educk-500
                          focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {enviando ? 'Guardando...' : 'Cambiar contraseña'}
