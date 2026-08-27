@@ -3,9 +3,10 @@
 // (para la planilla de notas en vivo), con materias, docentes, un curso,
 // estudiantes matriculados, horario y calificaciones variadas.
 //
-// Uso: node seed-demo.mjs   (con el backend corriendo en localhost:8081)
+// Uso: node seed-demo.mjs                 (contra localhost:8081)
+//      SEED_BASE_URL=https://... node seed-demo.mjs   (contra otro backend)
 
-const BASE = 'http://localhost:8081/api';
+const BASE = (process.env.SEED_BASE_URL ?? 'http://localhost:8081') + '/api';
 let TOKEN = '';
 
 async function intentar(method, path, body) {
