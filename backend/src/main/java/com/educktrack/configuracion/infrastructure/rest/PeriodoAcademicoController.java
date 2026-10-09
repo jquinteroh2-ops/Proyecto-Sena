@@ -31,6 +31,12 @@ public class PeriodoAcademicoController {
 
     private static final String GESTION = "hasAnyRole('ADMINISTRADOR','COORDINADOR_ACADEMICO','RECTOR')";
     private static final String CONSULTA = "hasAnyRole('DOCENTE','COORDINADOR_ACADEMICO','RECTOR','ADMINISTRADOR')";
+    /**
+     * Catalogo de solo lectura (nombres, sin datos personales): tambien lo leen
+     * el estudiante y el acudiente. Sin esto, "Mis notas" mostraba "Materia #1"
+     * en vez del nombre, porque la consulta les respondia 403.
+     */
+    private static final String CATALOGO = "hasAnyRole('DOCENTE','COORDINADOR_ACADEMICO','RECTOR','ADMINISTRADOR','ESTUDIANTE','PADRE_FAMILIA')";
 
     private final PeriodoAcademicoService service;
 
@@ -55,7 +61,7 @@ public class PeriodoAcademicoController {
     }
 
     @GetMapping
-    @PreAuthorize(CONSULTA)
+    @PreAuthorize(CATALOGO)
     @Operation(summary = "Listar periodos academicos")
     public ResponseEntity<List<PeriodoDto>> listar() {
         return ResponseEntity.ok(service.listar());

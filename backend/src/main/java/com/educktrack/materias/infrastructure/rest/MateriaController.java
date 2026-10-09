@@ -31,6 +31,12 @@ public class MateriaController {
 
     private static final String GESTION = "hasAnyRole('COORDINADOR_ACADEMICO','ADMINISTRADOR')";
     private static final String CONSULTA = "hasAnyRole('DOCENTE','COORDINADOR_ACADEMICO','RECTOR','ADMINISTRADOR')";
+    /**
+     * Catalogo de solo lectura (nombres, sin datos personales): tambien lo leen
+     * el estudiante y el acudiente. Sin esto, "Mis notas" mostraba "Materia #1"
+     * en vez del nombre, porque la consulta les respondia 403.
+     */
+    private static final String CATALOGO = "hasAnyRole('DOCENTE','COORDINADOR_ACADEMICO','RECTOR','ADMINISTRADOR','ESTUDIANTE','PADRE_FAMILIA')";
 
     private final GestionMateriaService service;
 
@@ -56,14 +62,14 @@ public class MateriaController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize(CONSULTA)
+    @PreAuthorize(CATALOGO)
     @Operation(summary = "Consultar materia")
     public ResponseEntity<MateriaDto> consultar(@PathVariable Long id) {
         return ResponseEntity.ok(service.consultar(id));
     }
 
     @GetMapping
-    @PreAuthorize(CONSULTA)
+    @PreAuthorize(CATALOGO)
     @Operation(summary = "Listar materias")
     public ResponseEntity<List<MateriaDto>> listar() {
         return ResponseEntity.ok(service.listar());
