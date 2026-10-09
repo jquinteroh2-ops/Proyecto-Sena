@@ -40,6 +40,9 @@ public class SecurityConfig {
             // de un solo uso es lo que autoriza la operacion.
             "/api/auth/restablecer-password",
             "/api/health",
+            // Pagina de error interna de Spring: si exigiera sesion, cualquier
+            // error se le mostraria al cliente como un 401 enganoso.
+            "/error",
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html"
