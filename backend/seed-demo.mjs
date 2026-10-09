@@ -5,6 +5,8 @@
 //
 // Uso: node seed-demo.mjs                 (contra localhost:8081)
 //      SEED_BASE_URL=https://... node seed-demo.mjs   (contra otro backend)
+//      SEED_CORREO / SEED_PASSWORD: cuenta con la que se conecta (por
+//      defecto el administrador inicial de desarrollo)
 
 const BASE = (process.env.SEED_BASE_URL ?? 'http://localhost:8081') + '/api';
 let TOKEN = '';
@@ -44,9 +46,11 @@ async function api(method, path, body) {
 }
 
 async function main() {
+  // Credenciales por variables de entorno: nunca escritas en el repositorio.
+  // Por defecto, el administrador inicial que crea el backend en desarrollo.
   const login = await api('POST', '/auth/login', {
-    correo: 'rector@educktrack.edu.co',
-    password: '9LN3XkR7NgiV4grxTD4A',
+    correo: process.env.SEED_CORREO ?? 'admin@educktrack.edu.co',
+    password: process.env.SEED_PASSWORD ?? 'Admin123*',
   });
   TOKEN = login.token;
   console.log('Login OK');
