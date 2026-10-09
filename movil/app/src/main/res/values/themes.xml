@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Misma paleta del frontend web: azul -> violeta. -->
+    <color name="azul">#2350D6</color>
+    <color name="violeta">#6D2BD9</color>
+    <color name="fondo">#F3F5FB</color>
+    <color name="tarjeta">#FFFFFF</color>
+    <color name="texto">#111827</color>
+    <color name="texto_suave">#6B7280</color>
+    <color name="borde">#D9DEE8</color>
+    <color name="verde">#16A34A</color>
+    <color name="verde_fondo">#DCFCE7</color>
+    <color name="ambar">#B45309</color>
+    <color name="ambar_fondo">#FEF3C7</color>
+    <color name="rojo">#DC2626</color>
+    <color name="rojo_fondo">#FEE2E2</color>
+
+    <style name="Tema" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/azul</item>
+        <item name="android:colorAccent">@color/violeta</item>
+        <item name="android:statusBarColor">@color/azul</item>
+        <item name="android:windowBackground">@color/fondo</item>
+        <item name="android:textColor">@color/texto</item>
+    </style>
+</resources>

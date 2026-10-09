@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EduckTrack</string>
+    <string name="lema">Tus notas del colegio, en tu bolsillo.</string>
+    <string name="titulo_login">Inicia sesión</string>
+    <string name="subtitulo_login">Ingresa con tu cuenta institucional.</string>
+    <string name="correo">Correo institucional</string>
+    <string name="contrasena">Contraseña</string>
+    <string name="entrar">Iniciar sesión</string>
+    <string name="entrando">Conectando…</string>
+    <string name="despertando">El servidor gratuito se estaba durmiendo: la primera conexión puede tardar hasta 2 minutos.</string>
+    <string name="error_correo">Escribe un correo válido.</string>
+    <string name="error_contrasena">Escribe tu contraseña.</string>
+    <string name="error_red">No hay conexión a internet.</string>
+    <string name="mis_notas">Mis notas</string>
+    <string name="cargando_notas">Cargando tus notas…</string>
+    <string name="sin_notas">Todavía no tienes calificaciones registradas.</string>
+    <string name="solo_estudiantes">Este módulo es para estudiantes: tu cuenta no tiene un perfil de estudiante.</string>
+    <string name="reintentar">Reintentar</string>
+    <string name="salir">Salir</string>
+    <string name="promedio_general">Promedio general</string>
+</resources>

@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'co.edu.educktrack.movil'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'co.edu.educktrack.movil'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+        // La URL del API no se escribe en el codigo: llega desde gradle.properties
+        // o desde la linea de comandos (-PapiUrl=...).
+        buildConfigField 'String', 'API_URL', "\"${project.findProperty('apiUrl')}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Firma con la llave de depuracion para que el APK sea instalable sin
+            // una llave de publicacion (evidencia academica, no Play Store).
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
