@@ -1,0 +1,159 @@
+{
+  "base": "http://localhost:5173/api",
+  "fecha": "2026-10-08 23:21",
+  "pruebas": [
+    {
+      "n": 1,
+      "funcionalidad": "Disponibilidad de la API",
+      "datos": "GET /api/health",
+      "esperado": "HTTP 200, servicio arriba",
+      "obtenido": "HTTP 200 - timestamp=2026-10-08T23:21:06.556415400-05:00, status=UP, service=educktrack-backend",
+      "estado": "Exitosa",
+      "ms": 56
+    },
+    {
+      "n": 2,
+      "funcionalidad": "Inicio de sesion valido (administrador)",
+      "datos": "correo admin@educktrack.edu.co + clave",
+      "esperado": "HTTP 200 con token JWT y datos del usuario",
+      "obtenido": "HTTP 200 - token JWT recibido (Bearer, expira en 28800 s)",
+      "estado": "Exitosa",
+      "ms": 279
+    },
+    {
+      "n": 3,
+      "funcionalidad": "Inicio de sesion con clave incorrecta",
+      "datos": "correo admin@educktrack.edu.co + clave 'incorrecta'",
+      "esperado": "HTTP 401 con mensaje de credenciales invalidas",
+      "obtenido": "HTTP 401 - Credenciales invalidas o sesion no autenticada.",
+      "estado": "Exitosa",
+      "ms": 94
+    },
+    {
+      "n": 4,
+      "funcionalidad": "Acceso a recurso protegido sin token",
+      "datos": "GET /api/estudiantes sin Authorization",
+      "esperado": "HTTP 401: no se entrega informacion",
+      "obtenido": "HTTP 401 - Debe autenticarse para acceder a este recurso.",
+      "estado": "Exitosa",
+      "ms": 32
+    },
+    {
+      "n": 5,
+      "funcionalidad": "Registrar estudiante (RF-06)",
+      "datos": "documento 1081148342, 'Prueba Integracion', acudiente con telefono",
+      "esperado": "HTTP 201 con el estudiante creado y su id",
+      "obtenido": "HTTP 201 - id=8, documento=1081148342, nombres=Prueba",
+      "estado": "Exitosa",
+      "ms": 38
+    },
+    {
+      "n": 6,
+      "funcionalidad": "Consultar el estudiante recien creado",
+      "datos": "GET /api/estudiantes/8",
+      "esperado": "HTTP 200 con los mismos datos guardados en la BD",
+      "obtenido": "HTTP 200 - id=8, documento=1081148342, nombres=Prueba",
+      "estado": "Exitosa",
+      "ms": 43
+    },
+    {
+      "n": 7,
+      "funcionalidad": "Registrar estudiante con datos incompletos",
+      "datos": "nombres y apellidos vacios",
+      "esperado": "HTTP 400 con el detalle de cada campo invalido",
+      "obtenido": "HTTP 400 - Existen errores de validacion en los datos enviados.",
+      "estado": "Exitosa",
+      "ms": 33
+    },
+    {
+      "n": 8,
+      "funcionalidad": "Registrar estudiante con documento repetido",
+      "datos": "documento 1081148342 (ya existe)",
+      "esperado": "Rechazo por regla de negocio (HTTP 409) que menciona el documento",
+      "obtenido": "HTTP 409 - El documento de identidad ya esta registrado.",
+      "estado": "Exitosa",
+      "ms": 34
+    },
+    {
+      "n": 9,
+      "funcionalidad": "Registrar estudiante sin contacto del acudiente",
+      "datos": "acudiente sin nombre ni telefono",
+      "esperado": "Rechazo por regla de negocio (HTTP 409)",
+      "obtenido": "HTTP 409 - Debe registrar al menos un dato de contacto del acudiente.",
+      "estado": "Exitosa",
+      "ms": 17
+    },
+    {
+      "n": 10,
+      "funcionalidad": "Inicio de sesion del estudiante",
+      "datos": "correo sofia.martinez@educktrack.edu.co",
+      "esperado": "HTTP 200 con token del rol ESTUDIANTE",
+      "obtenido": "HTTP 200 - token JWT recibido (Bearer, expira en 28800 s)",
+      "estado": "Exitosa",
+      "ms": 96
+    },
+    {
+      "n": 11,
+      "funcionalidad": "Perfil del usuario autenticado",
+      "datos": "GET /api/identidad/yo con token del estudiante",
+      "esperado": "HTTP 200 con su nombre, rol y estudianteId",
+      "obtenido": "HTTP 200 - usuarioId=3, nombre=Sofia Martinez, correo=sofia.martinez@educktrack.edu.co",
+      "estado": "Exitosa",
+      "ms": 52
+    },
+    {
+      "n": 12,
+      "funcionalidad": "Historico de notas del estudiante (RF-37)",
+      "datos": "GET /api/calificaciones/historico/1",
+      "esperado": "HTTP 200 con sus calificaciones registradas",
+      "obtenido": "HTTP 200 - lista con 18 registro(s)",
+      "estado": "Exitosa",
+      "ms": 30
+    },
+    {
+      "n": 13,
+      "funcionalidad": "Estudiante consulta el catalogo de materias",
+      "datos": "GET /api/materias con token del estudiante",
+      "esperado": "HTTP 200 con los nombres de las materias (antes 403)",
+      "obtenido": "HTTP 200 - lista con 3 registro(s)",
+      "estado": "Exitosa",
+      "ms": 34
+    },
+    {
+      "n": 14,
+      "funcionalidad": "Estudiante intenta administrar usuarios",
+      "datos": "GET /api/usuarios con token del estudiante",
+      "esperado": "HTTP 403: su rol no tiene permiso",
+      "obtenido": "HTTP 403 - No tiene permisos para realizar esta accion.",
+      "estado": "Exitosa",
+      "ms": 21
+    },
+    {
+      "n": 15,
+      "funcionalidad": "Registrar nota fuera de la escala (1.0 - 5.0)",
+      "datos": "valor 7.5 para el estudiante 1, curso 2",
+      "esperado": "Rechazo de la nota invalida (HTTP 400 o 409)",
+      "obtenido": "HTTP 409 - La calificacion debe estar entre 1.00 y 5.00.",
+      "estado": "Exitosa",
+      "ms": 39
+    },
+    {
+      "n": 16,
+      "funcionalidad": "Reporte de rendimiento del curso (RF-48)",
+      "datos": "GET /api/reportes/rendimiento?cursoId=1&periodoAcademicoId=1",
+      "esperado": "HTTP 200 con promedios calculados desde la BD",
+      "obtenido": "HTTP 200 - cursoId=1, periodoAcademicoId=1, estudiantes=[{'estudianteId': 1, 'nombreCompleto': 'Sofia Martinez', 'promedioGeneral': 3.19, 'aprobado': True}, {'estudianteId': 2, 'nombreCompleto': 'Mateo Perez', 'promedioGeneral': 4.49, 'aprobado': True}, {'estudianteId': 3, 'nombreCompleto': 'Valentina Rodriguez', 'promedioGeneral': 2.59, 'aprobado': False}, {'estudianteId': 4, 'nombreCompleto': 'Samuel Torres', 'promedioGeneral': 3.89, 'aprobado': True}, {'estudianteId': 5, 'nombreCompleto': 'Isabella Diaz', 'promedioGeneral': 4.79, 'aprobado': True}, {'estudianteId': 6, 'nombreCompleto': 'Santiago Vargas', 'promedioGeneral': 2.19, 'aprobado': False}]",
+      "estado": "Exitosa",
+      "ms": 227
+    },
+    {
+      "n": 17,
+      "funcionalidad": "Peticion con un parametro faltante",
+      "datos": "GET /api/calificaciones/boletin sin cursoId ni periodo",
+      "esperado": "HTTP 400 indicando que parametro falta (antes respondia 401)",
+      "obtenido": "HTTP 400 - Falta el parametro obligatorio 'cursoId'.",
+      "estado": "Exitosa",
+      "ms": 26
+    }
+  ]
+}
