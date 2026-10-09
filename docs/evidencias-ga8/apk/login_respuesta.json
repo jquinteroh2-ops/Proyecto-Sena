@@ -1,0 +1,14 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJ...",
+  "tipo": "Bearer",
+  "expiraEnSegundos": 28800,
+  "usuario": {
+    "id": 30002,
+    "nombre": "Sofia Martinez",
+    "correo": "sofia.martinez@educktrack.edu.co",
+    "roles": [
+      "ESTUDIANTE"
+    ],
+    "debeCambiarPassword": true
+  }
+}

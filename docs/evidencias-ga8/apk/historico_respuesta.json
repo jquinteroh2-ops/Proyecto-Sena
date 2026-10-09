@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "estudianteId": 1,
+    "materiaId": 1,
+    "cursoId": 1,
+    "periodoAcademicoId": 1,
+    "tipo": "QUIZ",
+    "valor": 3.3,
+    "descripcion": null
+  },
+  {
+    "id": 2,
+    "estudianteId": 1,
+    "materiaId": 1,
+    "cursoId": 1,
+    "periodoAcademicoId": 1,
+    "tipo": "EXAMEN",
+    "valor": 3.1,
+    "descripcion": null
+  }
+]

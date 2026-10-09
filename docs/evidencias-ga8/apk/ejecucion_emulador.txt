@@ -1,0 +1,16 @@
+$ adb devices
+List of devices attached
+emulator-5554	device
+
+$ adb shell getprop ro.build.version.release   (version de Android)
+11
+
+$ adb install EduckTrack-movil-1.0.apk
+Performing Streamed Install
+Success
+
+$ adb shell pm list packages educktrack
+package:co.edu.educktrack.movil
+
+$ adb shell am start -n co.edu.educktrack.movil/.LoginActivity
+Starting: Intent { cmp=co.edu.educktrack.movil/.LoginActivity }
