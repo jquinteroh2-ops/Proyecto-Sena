@@ -1,0 +1,10 @@
+[OK] Detecta al menos el 80% de los que reprueban (recall 0.872)
+[OK] Separa bien las dos clases (AUC ROC 0.954 >= 0.85)
+[OK] Bajar el promedio parcial sube el riesgo
+[OK] Bajar la asistencia sube el riesgo
+[OK] Una tendencia positiva baja el riesgo
+[OK] Estudiante con notas y asistencia bajas -> riesgo ALTO (100%)
+[OK] Estudiante destacado -> riesgo BAJO (0%)
+[OK] La probabilidad siempre queda entre 0 y 1
+
+8/8 criterios cumplidos

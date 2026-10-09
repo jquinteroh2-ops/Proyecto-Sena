@@ -40,3 +40,5 @@ mysql-data/
 # Python
 __pycache__/
 *.pyc
+docs/evidencias-ga8/pdf/
+docs/evidencias-ga8/fuentes/*.html

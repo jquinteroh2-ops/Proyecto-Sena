@@ -140,13 +140,13 @@ def main():
     nombres = list(resultados.keys())
     claves = ["exactitud", "recall", "f1", "auc_roc"]
     ancho = 0.26
-    fig, ax = plt.subplots(figsize=(6.8, 3.4))
+    fig, ax = plt.subplots(figsize=(6.8, 3.8))
     for k, (nombre, color) in enumerate(zip(nombres, [AZUL, VIOLETA, GRIS])):
         ax.bar(np.arange(len(claves)) + (k - 1) * ancho, [resultados[nombre][c] for c in claves], ancho,
                label=nombre, color=color)
     ax.set_xticks(np.arange(len(claves)), ["Exactitud", "Recall", "F1", "AUC ROC"])
     ax.set_ylim(0.5, 1.0)
-    ax.legend(frameon=False, fontsize=9, loc="lower right")
+    ax.legend(frameon=False, fontsize=9, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
     ax.set_title("Comparacion de modelos (datos de prueba)")
     fig.tight_layout()
     fig.savefig(os.path.join(AQUI, "modelo", "comparacion.png"), dpi=160)

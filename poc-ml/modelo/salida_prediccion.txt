@@ -1,0 +1,12 @@
+
+Riesgo academico - curso 2, periodo 2  (http://localhost:8081/api)
+
+Estudiante               Prom.  <3  Tend. Asist.  Ant.   Prob.  Nivel  Causa principal
+Santiago Vargas           2.90   6  -0.10  100.0  2.20   83.0%  ALTO   venia con bajo promedio del periodo anterior
+Valentina Rodriguez       3.40   0  -0.10  100.0  2.60   16.6%  BAJO   -
+Sofia Martinez            3.80   0  -0.10  100.0  3.20    1.5%  BAJO   -
+Samuel Torres             3.50   0  -0.10  100.0  3.90    1.0%  BAJO   -
+Mateo Perez               4.10   0  -0.10  100.0  4.50    0.0%  BAJO   -
+Isabella Diaz             4.90   0  -0.10  100.0  4.80    0.0%  BAJO   -
+
+Detalle guardado en poc-ml/modelo/predicciones.json
