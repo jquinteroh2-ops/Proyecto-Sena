@@ -1,0 +1,32 @@
+{
+  "datos_entrenamiento": 1200,
+  "datos_prueba": 300,
+  "tasa_reprobacion": 0.259,
+  "modelos": {
+    "Regresion logistica": {
+      "exactitud": 0.87,
+      "precision": 0.701,
+      "recall": 0.872,
+      "f1": 0.777,
+      "auc_roc": 0.954,
+      "recall_validacion_cruzada": 0.9
+    },
+    "Arbol de decision": {
+      "exactitud": 0.877,
+      "precision": 0.72,
+      "recall": 0.859,
+      "f1": 0.784,
+      "auc_roc": 0.929,
+      "recall_validacion_cruzada": 0.891
+    },
+    "Bosque aleatorio": {
+      "exactitud": 0.863,
+      "precision": 0.687,
+      "recall": 0.872,
+      "f1": 0.768,
+      "auc_roc": 0.952,
+      "recall_validacion_cruzada": 0.878
+    }
+  },
+  "elegido": "Regresion logistica"
+}

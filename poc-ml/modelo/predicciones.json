@@ -1,0 +1,78 @@
+{
+  "curso": 2,
+  "periodo": 2,
+  "estudiantes": [
+    {
+      "estudianteId": 6,
+      "estudiante": "Santiago Vargas",
+      "promedio_parcial": 2.9,
+      "notas_bajo_3": 6,
+      "tendencia": -0.1,
+      "asistencia_pct": 100.0,
+      "promedio_anterior": 2.2,
+      "probabilidad": 0.83,
+      "nivel": "ALTO",
+      "causa": "venia con bajo promedio del periodo anterior"
+    },
+    {
+      "estudianteId": 3,
+      "estudiante": "Valentina Rodriguez",
+      "promedio_parcial": 3.4,
+      "notas_bajo_3": 0,
+      "tendencia": -0.1,
+      "asistencia_pct": 100.0,
+      "promedio_anterior": 2.6,
+      "probabilidad": 0.166,
+      "nivel": "BAJO",
+      "causa": "-"
+    },
+    {
+      "estudianteId": 1,
+      "estudiante": "Sofia Martinez",
+      "promedio_parcial": 3.8,
+      "notas_bajo_3": 0,
+      "tendencia": -0.1,
+      "asistencia_pct": 100.0,
+      "promedio_anterior": 3.2,
+      "probabilidad": 0.015,
+      "nivel": "BAJO",
+      "causa": "-"
+    },
+    {
+      "estudianteId": 4,
+      "estudiante": "Samuel Torres",
+      "promedio_parcial": 3.5,
+      "notas_bajo_3": 0,
+      "tendencia": -0.1,
+      "asistencia_pct": 100.0,
+      "promedio_anterior": 3.9,
+      "probabilidad": 0.01,
+      "nivel": "BAJO",
+      "causa": "-"
+    },
+    {
+      "estudianteId": 2,
+      "estudiante": "Mateo Perez",
+      "promedio_parcial": 4.1,
+      "notas_bajo_3": 0,
+      "tendencia": -0.1,
+      "asistencia_pct": 100.0,
+      "promedio_anterior": 4.5,
+      "probabilidad": 0.0,
+      "nivel": "BAJO",
+      "causa": "-"
+    },
+    {
+      "estudianteId": 5,
+      "estudiante": "Isabella Diaz",
+      "promedio_parcial": 4.9,
+      "notas_bajo_3": 0,
+      "tendencia": -0.1,
+      "asistencia_pct": 100.0,
+      "promedio_anterior": 4.8,
+      "probabilidad": 0.0,
+      "nivel": "BAJO",
+      "causa": "-"
+    }
+  ]
+}

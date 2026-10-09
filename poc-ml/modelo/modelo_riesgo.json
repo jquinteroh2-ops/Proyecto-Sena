@@ -1,0 +1,37 @@
+{
+  "descripcion": "Probabilidad de reprobar el periodo. p = 1 / (1 + e^-(b + sum(w_i * (x_i - media_i) / desv_i)))",
+  "columnas": [
+    "promedio_parcial",
+    "notas_bajo_3",
+    "tendencia",
+    "asistencia_pct",
+    "promedio_anterior"
+  ],
+  "media": [
+    3.288242,
+    1.6525,
+    -0.019108,
+    87.700833,
+    3.3799
+  ],
+  "desviacion": [
+    0.680678,
+    1.673343,
+    0.533636,
+    8.164108,
+    0.651553
+  ],
+  "pesos": [
+    -2.360961,
+    0.185406,
+    -1.084004,
+    -0.569097,
+    -1.297387
+  ],
+  "intercepto": -1.902358,
+  "umbrales": {
+    "alto": 0.6,
+    "medio": 0.3
+  },
+  "entrenado_con": "datos sinteticos (poc-ml/generar_datos.py, semilla 2026)"
+}
